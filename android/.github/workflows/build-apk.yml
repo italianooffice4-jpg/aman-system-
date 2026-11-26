@@ -2,7 +2,7 @@ name: Build APK
 on:
   workflow_dispatch:
   push:
-    branches: [main, master]
+    branches: [main, master, android-v15.5.1-fresh-install]
 jobs:
   apk:
     runs-on: ubuntu-latest
