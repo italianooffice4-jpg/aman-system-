@@ -42,7 +42,7 @@ function unmount() {
 function mount(comp, el, failName) {
   unmount();
   app = createApp(comp);
-  app.config.errorHandler = (err) => { console.error('[AmanUI]', err); if (typeof window[failName] === 'function') window[failName](); };
+  app.config.errorHandler = (err, instance, info) => { console.error('[AmanUI]', err, info); if (typeof window[failName] === 'function') window[failName](err, info); };
   app.use(PrimeVue, { theme: { preset: Plum, options: { darkModeSelector: '[data-theme="dark"]' } }, locale: ar });
   vm = app.mount(el);
 }

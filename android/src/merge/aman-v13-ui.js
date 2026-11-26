@@ -53,13 +53,16 @@
   window.amanSwitchDash = (v) => { try { localStorage.setItem('ins_ui_dash', v ? '1' : '0'); } catch (e) {} go('dash'); };
 
   let failed = 0;
-  window.amanDashFail = () => {
+  window.amanDashFail = (error, info) => {
     if (failed) return; failed = 1;
+    const detail = String((error && (error.stack || error.message)) || error || info || 'خطأ غير محدد');
+    try { localStorage.setItem('aman_dash_error', JSON.stringify({ at: new Date().toISOString(), detail })); } catch (e) {}
+    console.error('[AmanDashboard]', detail);
     setTimeout(() => {
       try { if (window.AmanUI) AmanUI.unmount(); } catch (e) {}
       const el = document.getElementById('vue-dash');
       if (el) { el.innerHTML = legacy(); }
-      toast('تعذر تحميل الشكل الجديد للشاشة الرئيسية، تم عرض الشكل القديم');
+      toast('تعذر تحميل الشكل الجديد للشاشة الرئيسية: ' + detail.split('\\n')[0].slice(0, 180));
     }, 0);
   };
 
@@ -72,7 +75,7 @@
     if (!on()) return bar('جرّب الشكل الجديد (تجريبي)', true) + legacy.apply(this, arguments);
     setTimeout(() => {
       const el = document.getElementById('vue-dash'); if (!el) return;
-      try { AmanUI.mountDash(el); } catch (e) { console.error(e); window.amanDashFail(); }
+      try { AmanUI.mountDash(el); } catch (e) { console.error(e); window.amanDashFail(e); }
     }, 0);
     return bar('الشكل القديم', false) + '<div id="vue-dash"></div>';
   };
