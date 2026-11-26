@@ -166,9 +166,10 @@ A.chTable=function(){
 };
 const dtxt=(v,lbl)=>{if(v.length<2)return '';const d=v[v.length-1]-v[v.length-2];return d?(d>0?'▲ +':'▼ −')+fm(Math.abs(d))+' '+lbl:'بدون تغيير '+lbl};
 
+// دالة الترحيب تُعرّف قبل إضافتها إلى واجهة التوافق لتجنب الوصول قبل التهيئة.
+const greet=()=>{const h=new Date().getHours();return h<12?'صباح الخير':'مساء الخير'};
 // واجهة توافقية تستخدمها لوحة Vue الجديدة؛ الدوال الأصلية معرفة داخل هذا الملف.
 A.dx = { series, moData, monN, dtxt, mlabC, mlabL, greet };
-const greet=()=>{const h=new Date().getHours();return h<12?'صباح الخير':'مساء الخير'};
 R.dash=()=>{
   const t=stats(),sr=series(),pend=Q().filter(q=>q.status==QS[0]),cm=isoD(new Date()).slice(0,7);
   const added=S.emps.filter(e=>e.status=='active'&&String(e.start||'').slice(0,7)==cm).length;
