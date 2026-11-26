@@ -1,5 +1,6 @@
 // نقطة الدخول: تُعرّف window.AmanUI التي يستخدمها src/merge/aman-v13-ui.js
 import { createApp } from 'vue';
+import { App } from '@capacitor/app';
 import PrimeVue from 'primevue/config';
 import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
@@ -89,3 +90,19 @@ const idle = window.requestIdleCallback || ((f) => setTimeout(f, 200));
 const startGlobal = () => { try { mountGlobal(); } catch (e) { console.error(e); } };
 if (document.readyState === 'complete') idle(startGlobal, { timeout: 1500 });
 else window.addEventListener('load', () => idle(startGlobal, { timeout: 1500 }), { once: true });
+
+
+// زر الرجوع الأصلي في أندرويد: الرجوع داخل الصفحات، والخروج فقط من لوحة البداية.
+try {
+  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+    App.addListener('backButton', () => {
+      let page = '';
+      try { page = history.state && history.state.amanNav ? history.state.page : ''; } catch (e) {}
+      if (page && page !== 'dash') {
+        history.back();
+      } else {
+        App.exitApp();
+      }
+    }).catch(e => console.error('[AmanUI] backButton listener', e));
+  }
+} catch (e) { console.error('[AmanUI] backButton setup', e); }
