@@ -165,6 +165,9 @@ A.chTable=function(){
   openM(`<div class=cmh><div><h3 style='margin:0'>${cf.l.split(' (')[0]}</h3><small class=mut>آخر ${fm(st.n)} شهر — اضغط على صف لعرض تفاصيله</small></div><button class='btn s sm' onclick=closeM()>إغلاق</button></div><div class=tw style='max-height:60vh;overflow:auto'><table class=ctb><tr><th>الشهر</th><th>${cf.l.split(' (')[0]}</th><th>التغيّر</th><th>الحركة</th></tr>${rows}</table></div>`,640);
 };
 const dtxt=(v,lbl)=>{if(v.length<2)return '';const d=v[v.length-1]-v[v.length-2];return d?(d>0?'▲ +':'▼ −')+fm(Math.abs(d))+' '+lbl:'بدون تغيير '+lbl};
+
+// واجهة توافقية تستخدمها لوحة Vue الجديدة؛ الدوال الأصلية معرفة داخل هذا الملف.
+A.dx = { series, moData, monN, dtxt, mlabC, mlabL };
 const greet=()=>{const h=new Date().getHours();return h<12?'صباح الخير':'مساء الخير'};
 R.dash=()=>{
   const t=stats(),sr=series(),pend=Q().filter(q=>q.status==QS[0]),cm=isoD(new Date()).slice(0,7);
