@@ -80,7 +80,7 @@
   // عند مغادرة صفحة معروضة بـ Vue (الرئيسية/الموظفون) نفكّ التركيب حتى لا يبقى تطبيق يتيم في الذاكرة
   const _go = go;
   go = function (v) {
-    if (v !== 'dash' && v !== 'emp' && window.AmanUI) { try { AmanUI.unmount(); } catch (e) {} }
+    if (!(window.amanVuePages || ['dash', 'emp']).includes(v) && window.AmanUI) { try { AmanUI.unmount(); } catch (e) {} }
     return _go.apply(this, arguments);
   };
 })();
@@ -116,4 +116,41 @@
     }
     return L.prof.apply(this, arguments);
   };
+})();
+
+/* ======================================================================
+   v15 المرحلة 4 (13) — الشركات (comp) • طلبات الدخول (req) • التقارير المالية (fin) • سجل العمليات (log) بواجهة Vue
+   نفس شبكة الأمان: الحزمة غير مبنية أو خطأ وقت العرض ← الصفحة القديمة كما هي. مفاتيح التبديل: ins_ui_comp / ins_ui_req / ins_ui_fin / ins_ui_log ('0' = القديم).
+   مطابقة كشوف المرتبات (rec) والإعدادات (set) لم تُحوَّل في هذه المرحلة (تبقى القديمة + بطاقات Vue التي أُضيفت للإعدادات في المرحلة 1).
+   ====================================================================== */
+(function () {
+  window.amanVuePages = ['dash', 'emp', 'comp', 'req', 'fin', 'log'];
+  const defs = { comp: ['Comp', 'mountComp', 'الشركات'], req: ['Req', 'mountReq', 'طلبات الدخول'], fin: ['Fin', 'mountFin', 'التقارير المالية'], log: ['Log', 'mountLog', 'سجل العمليات'] };
+  Object.keys(defs).forEach((page) => {
+    const [N, mountFn, title] = defs[page], legacy = R[page], boxId = 'vue-' + page, key = 'ins_ui_' + page;
+    const on = () => { try { return localStorage.getItem(key) !== '0'; } catch (e) { return true; } };
+    window['amanSwitch' + N] = (v) => { try { localStorage.setItem(key, v ? '1' : '0'); } catch (e) {} go(page); };
+    let failed = 0;
+    window['aman' + N + 'Fail'] = () => {
+      if (failed) return; failed = 1;
+      setTimeout(() => {
+        try { if (window.AmanUI) AmanUI.unmount(); } catch (e) {}
+        const el = document.getElementById(boxId);
+        if (el) { el.innerHTML = legacy(); }
+        toast('تعذر تحميل الشكل الجديد لصفحة «' + title + '»، تم عرض الشكل القديم');
+      }, 0);
+    };
+    const tryBtn = '<div style="text-align:left;margin:0 0 10px"><button class="btn s sm noprint" onclick="amanSwitch' + N + '(true)">جرّب الشكل الجديد (تجريبي)</button></div>';
+    R[page] = function () {
+      failed = 0;
+      if (!window.AmanUI || !AmanUI[mountFn]) return legacy.apply(this, arguments);
+      try { AmanUI.unmount(); } catch (e) {}
+      if (!on()) return tryBtn + legacy.apply(this, arguments);
+      setTimeout(() => {
+        const el = document.getElementById(boxId); if (!el) return;
+        try { AmanUI[mountFn](el); } catch (e) { console.error(e); window['aman' + N + 'Fail'](); }
+      }, 0);
+      return '<div id="' + boxId + '"></div>';
+    };
+  });
 })();

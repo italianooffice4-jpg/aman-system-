@@ -69,7 +69,9 @@ const money2 = n => m2(n);
 const num = n => fm(n);
 const cname = id => cn(id);
 const dmyx = s => isoToDmy(s);
-const scN = () => (typeof SC !== 'undefined' && SC ? SC.length : 0);
+const scTick = ref(0);
+const scN = () => { scTick.value; return typeof SC !== 'undefined' && SC ? SC.length : 0; };
+const onSc = () => { scTick.value++; };
 const resetSC = () => { try { SC = []; } catch (e) { /* لا شيء */ } };
 const sizeTxt = n => (n ? (n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB') : '');
 
@@ -114,7 +116,8 @@ watch(() => props.open, (v) => {
   else window.removeEventListener('keydown', onWinKey, true);
 }, { immediate: true });
 watch(reviewPref, (v) => { if (props.open && getForm().review !== v) setForm({ review: v }); });
-onBeforeUnmount(() => window.removeEventListener('keydown', onWinKey, true));
+window.addEventListener('aman:sc', onSc);
+onBeforeUnmount(() => { window.removeEventListener('keydown', onWinKey, true); window.removeEventListener('aman:sc', onSc); });
 
 function onWinKey(e) {
   if (!props.open || e.key !== 'Escape') return;

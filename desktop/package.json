@@ -1,7 +1,7 @@
 {
   "name": "aman-system",
   "productName": "Aman System",
-  "version": "15.2.0-phase3",
+  "version": "15.4.0",
   "description": "نظام إدارة التأمينات — نسخة سطح المكتب",
   "main": "main.js",
   "private": true,
@@ -60,5 +60,5 @@
       "perMachine": false
     }
   },
-  "amanShellApi": 1
+  "amanShellApi": 2
 }

@@ -125,7 +125,7 @@ with sync_playwright() as p:
     # ---------- الحفظ: مطابقة editE القديمة ----------
     pg.evaluate("S.emps=S.emps.slice(0,3);save()")
     LEG = r"""async()=>{
-      editE(); const set=(k,v)=>{const el=$('f_'+k); el.value=v;};
+      (window.amanLegacy&&amanLegacy.editE||editE)(); const set=(k,v)=>{const el=$('f_'+k); el.value=v;};
       set('name','محمود فتحي');set('code','C77');set('cid','c2');set('insno','5555');set('job','فني');set('nid','29201010100013');set('wage','4500');set('start','05/03/2026');set('reqIn','R1');set('reqInDate','04/03/2026');set('nat','مصري');set('addr_g','الجيزة');
       $('ok').click(); await new Promise(r=>setTimeout(r,400));
       const e=S.emps[S.emps.length-1]; const o={...e}; delete o.id; delete o._u; return o }"""
@@ -176,8 +176,8 @@ with sync_playwright() as p:
 
 
     # ---------- تغليف editE / regQ / prof (src/merge/aman-v13-ui.js) ----------
-    chk('الحزمة القديمة بلا openEmpForm ⇒ editE القديمة تعمل (نافذة #modal)', pg.evaluate("(()=>{editE('e0');const ok=document.getElementById('modal').classList.contains('on')&&!!$('f_nid');closeM();return ok})()"))
-    chk('prof القديمة تعمل عند غياب الحزمة', pg.evaluate("(()=>{prof('e0');const ok=document.getElementById('modal').classList.contains('on');closeM();return ok})()"))
+    chk('الحزمة القديمة بلا openEmpForm ⇒ editE القديمة تعمل (نافذة #modal)', pg.evaluate("(()=>{const h=window.AmanUI&&AmanUI.hostReady;if(h)AmanUI.hostReady=()=>false;editE('e0');if(h)AmanUI.hostReady=h;const ok=document.getElementById('modal').classList.contains('on')&&!!$('f_nid');closeM();return ok})()"))
+    chk('prof القديمة تعمل عند غياب الحزمة', pg.evaluate("(()=>{const h=window.AmanUI&&AmanUI.hostReady;if(h)AmanUI.hostReady=()=>false;prof('e0');if(h)AmanUI.hostReady=h;const ok=document.getElementById('modal').classList.contains('on');closeM();return ok})()"))
     pg.evaluate("window.__c=[];window.AmanUI=Object.assign(window.AmanUI||{},{hostReady:()=>true,openEmpForm:(id,o)=>__c.push(['form',id,o]),openEmpFile:(id)=>__c.push(['file',id])})")
     pg.evaluate("editE('e0');editE();regQ('q9');prof('e0');prof('nope')")
     c = pg.evaluate("__c")

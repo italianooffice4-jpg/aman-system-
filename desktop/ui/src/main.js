@@ -6,6 +6,10 @@ import Aura from '@primeuix/themes/aura';
 import EmpPage from './EmpPage.vue';
 import DashPage from './DashPage.vue';
 import SettingsExtra from './SettingsExtra.vue';
+import CompPage from './CompPage.vue';
+import ReqPage from './ReqPage.vue';
+import FinPage from './FinPage.vue';
+import LogPage from './LogPage.vue';
 import GlobalHost from './GlobalHost.vue';
 import { installAll } from './core/install.js';
 import { host } from './core/host.js';
@@ -44,6 +48,11 @@ function mount(comp, el, failName) {
 const mountEmp = (el) => mount(EmpPage, el, 'amanUIFail');
 const mountDash = (el) => mount(DashPage, el, 'amanDashFail');
 const mountSettings = (el) => mount(SettingsExtra, el, 'amanSetFail');
+// المرحلة 4 (13): الشركات، طلبات الدخول، التقارير المالية، السجل. معالج الفشل لكل صفحة يعيد الشكل القديم (انظر aman-v13-ui.js)
+const mountComp = (el) => mount(CompPage, el, 'amanCompFail');
+const mountReq = (el) => mount(ReqPage, el, 'amanReqFail');
+const mountFin = (el) => mount(FinPage, el, 'amanFinFail');
+const mountLog = (el) => mount(LogPage, el, 'amanLogFail');
 // لو فشلت بطاقات الإعدادات الجديدة تُترك الإعدادات القديمة كما هي
 window.amanSetFail = () => { unmount(); const el = document.getElementById('vue-set'); if (el) el.innerHTML = ''; };
 
@@ -61,7 +70,7 @@ function mountGlobal() {
 }
 
 window.AmanUI = {
-  mountEmp, mountDash, mountSettings, mountGlobal, unmount,
+  mountEmp, mountDash, mountSettings, mountComp, mountReq, mountFin, mountLog, mountGlobal, unmount,
   hostReady: () => !!host.ready,
   openEmpForm: (id, o) => { if (!host.openEmpForm) throw new Error('empform host not ready'); host.openEmpForm(id, o); },
   openEmpFile: (id, tab) => { if (!host.openEmpFile) throw new Error('empfile host not ready'); host.openEmpFile(id, tab); },
@@ -71,4 +80,9 @@ window.AmanUI = {
 window.AmanCore = { store, prefs, notify, search, shortcuts, host };   // للفحص والاختبار من وحدة التحكم
 
 installAll();    // تغليف الدوال القديمة (toast، الجرس، البحث، EL، الدخول…) — كل جزء معزول ويعود للأصل عند الفشل
-mountGlobal();
+// تركيب التطبيق العام (إشعارات/جرس/بحث) يُؤجَّل لما بعد أول رسم لشاشة الدخول: بناء ثيم PrimeVue ثقيل ويجمّد الشعار.
+// حتى يجهز تعمل الدوال القديمة (toast…) تلقائيًا لأن host.ready يكون false.
+const idle = window.requestIdleCallback || ((f) => setTimeout(f, 200));
+const startGlobal = () => { try { mountGlobal(); } catch (e) { console.error(e); } };
+if (document.readyState === 'complete') idle(startGlobal, { timeout: 1500 });
+else window.addEventListener('load', () => idle(startGlobal, { timeout: 1500 }), { once: true });

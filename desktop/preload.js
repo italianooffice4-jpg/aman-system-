@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('desk', {
   openDoc: (name, data) => ipcRenderer.invoke('desk:openDoc', name, data),
   latestScan: (dir) => ipcRenderer.invoke('desk:latestScan', dir),
   scan: (opts) => ipcRenderer.invoke('desk:scan', opts),
+  scanCancel: () => ipcRenderer.invoke('desk:scanCancel'),
   ai: (opts) => ipcRenderer.invoke('desk:ai', opts),
   // التحديث من GitHub
   updInfo: () => ipcRenderer.invoke('desk:updInfo'),

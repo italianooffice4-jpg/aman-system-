@@ -1,11 +1,13 @@
 ﻿# WIA scanner script (ASCII only on purpose: Windows PowerShell 5 misreads UTF-8 without BOM).
 # Modes: list  -> prints JSON array of scanners
 #        scan  -> scans directly with no legacy dialog, saves JPEG pages into OutDir
-param([string]$Mode = 'scan', [string]$Adf = '0', [string]$OutDir = '', [string]$DeviceId = '', [int]$Dpi = 200, [int]$Intent = 1)
+param([string]$Mode = 'scan', [string]$Adf = '0', [string]$OutDir = '', [string]$DeviceId = '', [int]$Dpi = 200, [int]$Intent = 1, [string]$Legacy = '0', [string]$Log = '')
 $ErrorActionPreference = 'Stop'
 $enc = New-Object System.Text.UTF8Encoding $false
 [Console]::OutputEncoding = $enc
 $JPEG = '{B96B3CAE-0728-11D3-9D7B-0000F81EF32E}'
+
+function Write-Log($m) { if ($Log -ne '') { try { Add-Content -Path $Log -Value ((Get-Date).ToString('o') + ' ps: ' + $m) } catch { } } }
 
 function Get-Scanners {
   $dm = New-Object -ComObject WIA.DeviceManager
@@ -52,8 +54,9 @@ try {
   }
   if (-not $info) { foreach ($i in $dm.DeviceInfos) { if ($i.Type -eq 1) { $info = $i; break } } }
 
-  $direct = $true
-  try {
+  Write-Log ('scan begin adf=' + $Adf + ' legacy=' + $Legacy + ' dpi=' + $Dpi)
+  $direct = ($Legacy -ne '1')
+  if ($direct) { try {
     $dev = $info.Connect()
     $item = $dev.Items.Item(1)
     if ($Adf -eq '1') { Set-Prop $dev.Properties 3088 1 }
@@ -76,17 +79,22 @@ try {
       }
       if ($n -eq 0) { throw 'NO_PAPER_IN_FEEDER' }
     } else {
+      Write-Log 'transfer start'
       $img = $item.Transfer($JPEG)
+      Write-Log 'transfer done'
       Save-Jpeg $img (Join-Path $OutDir 'page001.jpg')
+      Write-Log 'saved'
     }
   } catch {
     $m = $_.Exception.Message
+    Write-Log ('direct failed: ' + $m)
     if ($m -match 'NO_PAPER_IN_FEEDER' -or $Adf -eq '1') { throw }
     $direct = $false
-  }
+  } }
 
   if (-not $direct) {
     # fallback: legacy scanner dialog (only if direct scanning is not supported by the driver)
+    Write-Log 'legacy dialog'
     $dlg = New-Object -ComObject WIA.CommonDialog
     $img = $dlg.ShowAcquireImage(1, 1, 0, $JPEG, $false, $true, $false)
     if (-not $img) { Write-Output 'CANCEL'; exit 0 }

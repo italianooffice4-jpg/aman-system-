@@ -31,7 +31,9 @@ const DEFAULTS = {
   // المرحلة 2 — لوحة التحكم: co الشركة (فارغ = الكل) • per الفترة بالأشهر • auto تحديث تلقائي • summary ملخص يومي عند الفتح • sumDay آخر يوم عُرض فيه الملخص
   dash: { co: '', per: 12, auto: true, summary: true, sumDay: '' },
   // المرحلة 3 — نموذج الموظف: review = عرض شاشة المراجعة قبل كل حفظ
-  form: { review: true }
+  form: { review: true },
+  // المرحلة 4 — التنبيهات: fileDays مهلة تقديم الطلب بالأيام (61) • retDays نافذة التنبيه قبل سن المعاش بالأيام (60) • off أنواع تنبيهات مُوقَفة
+  alerts: { fileDays: 7, retDays: 180, off: [] }
 };
 const ID_RE = /^[a-z0-9_-]{1,24}$/i;
 const bus = createBus();
@@ -62,6 +64,13 @@ function sanitize(o) {
     if (typeof d.sumDay === 'string' && /^\d{4}-\d\d-\d\d$/.test(d.sumDay)) p.dash.sumDay = d.sumDay;
   }
   if (o.form && typeof o.form === 'object' && typeof o.form.review === 'boolean') p.form.review = o.form.review;
+  if (o.alerts && typeof o.alerts === 'object') {
+    const a = o.alerts, n = (v, lo, hi) => (Number.isFinite(+v) && +v >= lo && +v <= hi ? Math.round(+v) : null);
+    const fd = n(a.fileDays, 1, 60), rd = n(a.retDays, 30, 730);
+    if (fd !== null) p.alerts.fileDays = fd;
+    if (rd !== null) p.alerts.retDays = rd;
+    if (Array.isArray(a.off)) p.alerts.off = [...new Set(a.off.filter(x => typeof x === 'string' && ID_RE.test(x)))];
+  }
   if (Array.isArray(o.search)) p.search = o.search.filter(x => typeof x === 'string' && x.trim()).map(x => x.slice(0, 80)).slice(0, 12);
   return p;
 }
@@ -184,3 +193,5 @@ export const clearHistory = () => setPrefs({ search: [] });
 /* ---------------- نموذج الموظف (المرحلة 3) ---------------- */
 export const getForm = () => ({ ...P.form });
 export const setForm = (patch) => setPrefs({ form: { ...P.form, ...patch } });
+export const getAlertPrefs = () => ({ ...P.alerts, off: [...P.alerts.off] });
+export const setAlertPrefs = (patch) => setPrefs({ alerts: { ...P.alerts, ...patch } });

@@ -162,49 +162,81 @@ ipcMain.handle('desk:latestScan', async (_e, dir) => {
 
 // ---------- المسح الضوئي (Windows WIA عبر PowerShell، بدون الشاشات القديمة) ----------
 const SCRIPT = () => path.join(ROOT, 'scripts', 'scan.ps1');
+let psChild = null;                       // عملية PowerShell الجارية (للإلغاء)
+const scanLog = () => path.join(app.getPath('userData'), 'scan.log');
+const logScan = (m) => { try { fs.appendFileSync(scanLog(), new Date().toISOString() + ' ' + m + '\n'); } catch (e) { /* لا شيء */ } };
 const runPS = (args, timeout) => new Promise((resolve) => {
-  execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-STA', '-File', SCRIPT(), ...args],
-    { timeout, windowsHide: true, maxBuffer: 4 * 1024 * 1024, encoding: 'utf8' }, (err, stdout, stderr) =>
-      resolve({ err, out: String(stdout || '').replace(/^\uFEFF/, '').trim(), errText: String(stderr || '').replace(/^\uFEFF/, '').trim() }));
+  const t0 = Date.now();
+  psChild = execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-STA', '-File', SCRIPT(), ...args],
+    { timeout, windowsHide: true, maxBuffer: 4 * 1024 * 1024, encoding: 'utf8' }, (err, stdout, stderr) => {
+      const timedOut = !!(err && (err.killed || err.signal) && Date.now() - t0 >= timeout - 500);
+      psChild = null;
+      resolve({ err, timedOut, ms: Date.now() - t0, out: String(stdout || '').replace(/^\uFEFF/, '').trim(), errText: String(stderr || '').replace(/^\uFEFF/, '').trim() });
+    });
 });
 async function listScanners() {
   if (process.platform !== 'win32') return [];
-  const r = await runPS(['-Mode', 'list'], 30000);
+  const r = await runPS(['-Mode', 'list'], 20000);
   try { const j = JSON.parse(r.out || '[]'); return Array.isArray(j) ? j : [j]; } catch (e) { return []; }
 }
 ipcMain.handle('desk:scanners', () => listScanners());
 
+// قفل المسح: عملية واحدة فقط، وتتحرر دائمًا في finally (حتى مع الخطأ/المهلة/الإلغاء) — لا يبقى «جارٍ مسح آخر» للأبد
+let scanning = 0, scanCancelled = false;
+ipcMain.handle('desk:scanCancel', () => {
+  scanCancelled = true;
+  try { if (psChild) psChild.kill(); } catch (e) { /* لا شيء */ }
+  logScan('cancel requested by user');
+  return { ok: true, wasBusy: !!scanning };
+});
 ipcMain.handle('desk:scan', async (_e, opts = {}) => {
   if (process.platform !== 'win32') return { err: 'المسح الضوئي المباشر يعمل على Windows فقط' };
-  let cfg = readCfg(), sc = cfg.scan || {};
-  const list = await listScanners();
-  if (!list.length) return { err: 'لم يتم العثور على ماسح ضوئي متصل. تأكد من تشغيله وتعريفه.' };
-  let dev = list.find(s => s.id === sc.deviceId);
-  if (!dev) {
-    if (list.length === 1) dev = list[0];
-    else {
-      const i = dialog.showMessageBoxSync(win, { type: 'question', title: 'Aman System', message: 'اختر الماسح الضوئي (مرة واحدة فقط، ويمكن تغييره من الإعدادات)', buttons: [...list.map(s => s.name), 'إلغاء'], cancelId: list.length, defaultId: 0 });
-      if (i === list.length) return { cancel: true };
-      dev = list[i];
+  if (scanning && Date.now() - scanning < 6 * 60 * 1000) return { err: 'يوجد مسح جارٍ الآن. انتظر انتهاءه أو اضغط «إلغاء المسح السابق».', busy: true };
+  scanning = Date.now(); scanCancelled = false;
+  let out = '';
+  try {
+    let cfg = readCfg(), sc = cfg.scan || {};
+    const list = await listScanners();
+    if (!list.length) return { err: 'لم يتم العثور على ماسح ضوئي متصل. تأكد من تشغيله وتعريفه.' };
+    let dev = list.find(s => s.id === sc.deviceId);
+    if (!dev) {
+      if (list.length === 1) dev = list[0];
+      else {
+        const i = dialog.showMessageBoxSync(win, { type: 'question', title: 'Aman System', message: 'اختر الماسح الضوئي (مرة واحدة فقط، ويمكن تغييره من الإعدادات)', buttons: [...list.map(s => s.name), 'إلغاء'], cancelId: list.length, defaultId: 0 });
+        if (i === list.length) return { cancel: true };
+        dev = list[i];
+      }
+      sc = { ...sc, deviceId: dev.id, deviceName: dev.name };
+      cfg = { ...cfg, scan: sc }; writeCfg(cfg);
     }
-    sc = { ...sc, deviceId: dev.id, deviceName: dev.name };
-    cfg = { ...cfg, scan: sc }; writeCfg(cfg);
+    const dpi = [100, 150, 200, 300, 400, 600].includes(+sc.dpi) ? +sc.dpi : 200;
+    const intent = sc.color === 'gray' ? 2 : sc.color === 'bw' ? 4 : 1;
+    // legacy: نافذة الماسح الخاصة بالتعريف (أكثر ثباتًا مع بعض أجهزة HP) — تُطلب صراحةً أو من الإعدادات (scan.mode = 'dialog')
+    const legacy = opts.legacy === true || sc.mode === 'dialog';
+    const timeout = legacy ? 5 * 60 * 1000 : (opts.adf ? 4 * 60 * 1000 : 90 * 1000);
+    out = fs.mkdtempSync(path.join(tmpDir(), 'scan-'));
+    logScan('start dev=' + dev.name + ' adf=' + !!opts.adf + ' dpi=' + dpi + ' legacy=' + legacy + ' timeout=' + timeout / 1000 + 's');
+    const r = await runPS(['-Mode', 'scan', '-Adf', opts.adf ? '1' : '0', '-OutDir', out, '-DeviceId', dev.id, '-Dpi', String(dpi), '-Intent', String(intent), '-Legacy', legacy ? '1' : '0', '-Log', scanLog()], timeout);
+    logScan('end ms=' + r.ms + ' timedOut=' + r.timedOut + ' out=' + r.out.slice(0, 120) + ' err=' + r.errText.slice(0, 200));
+    if (scanCancelled) return { cancel: true };
+    if (/^CANCEL/m.test(r.out)) return { cancel: true };
+    const files = fs.readdirSync(out).filter(n => /\.jpg$/i.test(n)).sort();
+    if (!files.length) {
+      if (r.timedOut) return { err: 'انتهت مهلة المسح المباشر (' + Math.round(timeout / 1000) + ' ثانية) دون أن يُرجع الجهاز صورة.', timeout: true, legacy };
+      let msg = r.errText || r.out || (r.err && r.err.message) || '';
+      if (/NO_PAPER_IN_FEEDER/.test(msg)) msg = 'لا توجد أوراق في التغذية التلقائية';
+      else if (/NO_SCANNER|0x80210015/i.test(msg) || !msg) msg = 'لم يتم العثور على ماسح ضوئي متصل. تأكد من تشغيله وتعريفه.';
+      return { err: msg.slice(0, 300), legacy };
+    }
+    const pages = files.map(n => toDataUrl(fs.readFileSync(path.join(out, n)), 'image/jpeg'));
+    return { pages, data: pages[0] }; // data للتوافق مع الكود القديم
+  } catch (e) {
+    logScan('exception ' + (e && e.message));
+    return { err: 'تعذر المسح: ' + String((e && e.message) || e).slice(0, 200) };
+  } finally {
+    scanning = 0; psChild = null;
+    if (out) { try { fs.rmSync(out, { recursive: true, force: true }); } catch (e) { /* لا شيء */ } }
   }
-  const dpi = [100, 150, 200, 300, 400, 600].includes(+sc.dpi) ? +sc.dpi : 200;
-  const intent = sc.color === 'gray' ? 2 : sc.color === 'bw' ? 4 : 1;
-  const out = fs.mkdtempSync(path.join(tmpDir(), 'scan-'));
-  const r = await runPS(['-Mode', 'scan', '-Adf', opts.adf ? '1' : '0', '-OutDir', out, '-DeviceId', dev.id, '-Dpi', String(dpi), '-Intent', String(intent)], 5 * 60 * 1000);
-  if (/^CANCEL/m.test(r.out)) return { cancel: true };
-  const files = fs.readdirSync(out).filter(n => /\.jpg$/i.test(n)).sort();
-  if (!files.length) {
-    let msg = r.errText || r.out || (r.err && r.err.message) || '';
-    if (/NO_PAPER_IN_FEEDER/.test(msg)) msg = 'لا توجد أوراق في التغذية التلقائية';
-    else if (/NO_SCANNER|0x80210015/i.test(msg) || !msg) msg = 'لم يتم العثور على ماسح ضوئي متصل. تأكد من تشغيله وتعريفه.';
-    return { err: msg.slice(0, 300) };
-  }
-  const pages = files.map(n => toDataUrl(fs.readFileSync(path.join(out, n)), 'image/jpeg'));
-  try { fs.rmSync(out, { recursive: true, force: true }); } catch (e) {}
-  return { pages, data: pages[0] }; // data للتوافق مع الكود القديم
 });
 
 // ---------- الذكاء الاصطناعي (OpenAI / Claude / Ollama) ----------

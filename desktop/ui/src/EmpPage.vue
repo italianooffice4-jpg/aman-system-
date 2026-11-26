@@ -76,7 +76,9 @@ const reloadViews = () => { views.value = listViews('emp'); };
 
 /* ---------- البيانات ---------- */
 const list = computed(() => {
-  ver.value;
+  // يعتمد صراحةً على خانات البحث والفلاتر: EL() القديمة تقرأ flt (متغير عادي غير تفاعلي)،
+  // فبدون قراءة هذه القيم هنا لا يُعاد حساب القائمة عند الكتابة/الاختيار إلا بعد مغادرة الشاشة والرجوع.
+  ver.value; q.value; comp.value; st.value; fn.value; cfk.value;
   const m = FNM();
   return EL().map(e => {
     const r = calc(e), c = cfOf(e);
@@ -215,7 +217,7 @@ defineExpose({ refresh });
       <Button size="small" text severity="secondary" label="الشكل القديم" title="الرجوع للشكل القديم" @click="L.old" />
     </div>
 
-    <DataTable :value="list" dataKey="id" :rowClass="rowClass" scrollable paginator :rows="50" :rowsPerPageOptions="[25, 50, 100, 200]"
+    <DataTable :value="list" dataKey="id" :rowClass="rowClass" scrollable paginator :rows="25" :rowsPerPageOptions="[25, 50, 100, 200]"
       paginatorTemplate="FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink RowsPerPageDropdown"
       currentPageReportTemplate="{first} – {last} من {totalRecords} موظف"
       :sortField="sf" :sortOrder="so" @sort="onSort">
@@ -240,11 +242,11 @@ defineExpose({ refresh });
           <template v-else-if="k === 'wage'">{{ money(r.wage) }}</template>
           <template v-else-if="k === 'ded'">{{ r.ded === null ? '—' : money2(r.ded) }}</template>
           <template v-else-if="k === 'status'">
-            <Tag v-if="r.active" severity="success" value="مؤمن عليه" />
-            <template v-else><Tag severity="danger" :value="r.rtype" /><div class="mut2" v-html="dateH(r.end)"></div></template>
+            <span v-if="r.active" class="p-tag p-component p-tag-success"><span class="p-tag-label">مؤمن عليه</span></span>
+            <template v-else><span class="p-tag p-component p-tag-danger"><span class="p-tag-label">{{ r.rtype }}</span></span><div class="mut2" v-html="dateH(r.end)"></div></template>
           </template>
           <div v-else-if="k === 'cf'" class="cfcell" title="اضغط لتحديث الحالة" @click="L.cf(r.id)">
-            <Tag :severity="cfSev(r.cf)" :value="r.cf || 'غير محدد'" />
+            <span class="p-tag p-component" :class="'p-tag-' + cfSev(r.cf)"><span class="p-tag-label">{{ r.cf || 'غير محدد' }}</span></span>
             <div class="mut2">{{ r.cfKind === 'out' ? 'خروج' : 'دخول' }}<template v-if="r.cfDt"> · <span v-html="dateH(r.cfDt)"></span></template></div>
             <div v-if="r.cfNote" class="mut2" :title="r.cfNote" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis">{{ r.cfNote }}</div>
           </div>
@@ -259,12 +261,12 @@ defineExpose({ refresh });
       <Column header="">
         <template #body="{ data: r }">
           <div class="acts">
-            <Button text rounded severity="secondary" title="ملف الموظف" @click="L.prof(r.id)"><span v-html="icon('eye')"></span></Button>
-            <Button text rounded severity="secondary" title="طباعة استمارة التأمينات" @click="L.form(r.id)"><span v-html="icon('form')"></span></Button>
-            <Button text rounded severity="secondary" :title="'المستندات (' + r.nd + ')'" @click="L.docs(r.id)"><span v-html="icon('pclip')"></span></Button>
-            <Button text rounded severity="secondary" title="تعديل" @click="L.edit(r.id)"><span v-html="icon('edit')"></span></Button>
-            <Button text rounded severity="secondary" :title="r.active ? 'تسجيل استقالة' : 'إعادة تعيين'" @click="L.toggle(r.id)"><span v-html="icon(r.active ? 'logout' : 'refresh')"></span></Button>
-            <Button text rounded severity="danger" title="حذف" @click="L.del(r.id)"><span v-html="icon('trash')"></span></Button>
+            <button type="button" class="p-button p-component p-button-icon-only p-button-rounded p-button-text p-button-secondary" title="ملف الموظف" @click="L.prof(r.id)"><span v-html="icon('eye')"></span></button>
+            <button type="button" class="p-button p-component p-button-icon-only p-button-rounded p-button-text p-button-secondary" title="طباعة استمارة التأمينات" @click="L.form(r.id)"><span v-html="icon('form')"></span></button>
+            <button type="button" class="p-button p-component p-button-icon-only p-button-rounded p-button-text p-button-secondary" :title="'المستندات (' + r.nd + ')'" @click="L.docs(r.id)"><span v-html="icon('pclip')"></span></button>
+            <button type="button" class="p-button p-component p-button-icon-only p-button-rounded p-button-text p-button-secondary" title="تعديل" @click="L.edit(r.id)"><span v-html="icon('edit')"></span></button>
+            <button type="button" class="p-button p-component p-button-icon-only p-button-rounded p-button-text p-button-secondary" :title="r.active ? 'تسجيل استقالة' : 'إعادة تعيين'" @click="L.toggle(r.id)"><span v-html="icon(r.active ? 'logout' : 'refresh')"></span></button>
+            <button type="button" class="p-button p-component p-button-icon-only p-button-rounded p-button-text p-button-danger" title="حذف" @click="L.del(r.id)"><span v-html="icon('trash')"></span></button>
           </div>
         </template>
       </Column>

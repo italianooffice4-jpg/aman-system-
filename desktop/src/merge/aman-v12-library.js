@@ -171,6 +171,7 @@
       <div><label class=mut>الماسح الضوئي</label><select id=pc_scanner onchange=A12.pcSave()><option value="${esc(sc.deviceId || '')}">${esc(sc.deviceName || 'يُختار تلقائياً عند أول مسح')}</option></select></div>
       ${sel('pc_dpi', 'دقة المسح (DPI)', [150, 200, 300, 600].map(v => opt(v, v, sc.dpi || 200)).join(''))}
       ${sel('pc_scol', 'ألوان المسح', opt('color', 'ألوان', sc.color || 'color') + opt('gray', 'رمادي', sc.color) + opt('bw', 'أبيض وأسود', sc.color))}
+      ${sel('pc_smode', 'طريقة المسح', opt('direct', 'مباشر (بدون نوافذ)', sc.mode || 'direct') + opt('dialog', 'نافذة الماسح الخاصة بالتعريف (إن علّق المباشر)', sc.mode))}
     </div>
     <div style='display:flex;gap:8px;flex-wrap:wrap;margin-top:10px'><button class='btn s' onclick=A12.pcScanners()>تحديث قائمة الماسحات</button></div>
     <p class=mut style='margin-top:8px'>نوع الورق الخاص (لامع/ثقيل…) وجودة الطباعة تُضبط مرة واحدة من «تفضيلات الطباعة» للطابعة في Windows، وتُطبَّق تلقائياً.</p>`;
@@ -180,7 +181,7 @@
     const scSel = document.getElementById('pc_scanner');
     await D.cfgSet({
       print: { printer: v('pc_printer') || undefined, paper: v('pc_paper'), duplex: v('pc_duplex'), color: v('pc_color'), ask: v('pc_ask') === '1' },
-      scan: { deviceId: v('pc_scanner') || undefined, deviceName: scSel && scSel.selectedOptions[0] ? scSel.selectedOptions[0].text : undefined, dpi: +v('pc_dpi') || 200, color: v('pc_scol') }
+      scan: { deviceId: v('pc_scanner') || undefined, deviceName: scSel && scSel.selectedOptions[0] ? scSel.selectedOptions[0].text : undefined, dpi: +v('pc_dpi') || 200, color: v('pc_scol'), mode: v('pc_smode') || 'direct' }
     });
     toast('تم حفظ الإعدادات', 1);
   }

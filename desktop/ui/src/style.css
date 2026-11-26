@@ -323,3 +323,6 @@ html[data-theme] {
 .ff-note.arch { opacity: .75; }
 .ff-nt { white-space: pre-wrap; }
 @media (max-width: 720px) { .ef-g, .ff-grid { grid-template-columns: 1fr; } .ef-nid, .ef-calc { grid-template-columns: 1fr 1fr; } }
+
+/* المرحلة 4: زر الإجراء داخل التنبيه (59) */
+.at-bell .al .at-go, .aman-dash .al .at-go { margin-inline-start: auto; font-size: 11px; opacity: .75; white-space: nowrap; }

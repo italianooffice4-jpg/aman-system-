@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useHistory, useDataVersion } from './core/bridge.js';
 import { clearHistory, markAllRead } from './core/notify.js';
+import { openAlertTarget, actionLabel } from './core/alerts.js';
 
 const props = defineProps({ open: Boolean });
 const emit = defineEmits(['close']);
@@ -17,8 +18,9 @@ const svg = (n) => (typeof ic === 'function' ? ic(n, 18) : '');
 
 function openAlert(i) {
   emit('close');
+  const a = alertList.value[i];
   AL = alerts();            // aGo القديمة تقرأ AL
-  aGo(i);
+  if (a) openAlertTarget(a); else aGo(i);
 }
 const TL = { success: 'تم', error: 'خطأ', warn: 'تنبيه', info: 'معلومة' };
 const when = (t) => new Date(t).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
@@ -31,7 +33,7 @@ defineExpose({ markAllRead });
     <div class="at-bh"><b>التنبيهات</b><span class="at-n">{{ alertList.length }}</span></div>
     <div v-if="!alertList.length" class="at-empty">لا توجد تنبيهات 🎉</div>
     <button v-for="(a, i) in alertList" :key="'a' + i" class="al" :class="a.s" @click="openAlert(i)">
-      <i v-html="svg(a.i)"></i><span>{{ a.t }}</span>
+      <i v-html="svg(a.i)"></i><span>{{ a.t }}</span><small class="at-go">{{ actionLabel(a) }} ←</small>
     </button>
     <div class="at-bh at-bh2"><b>آخر الإشعارات</b>
       <button v-if="hist.length" class="at-link" @click="clearAll">مسح السجل</button>

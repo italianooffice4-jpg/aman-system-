@@ -4,6 +4,8 @@ import { useDataVersion, usePrefs } from './core/bridge.js';
 import { THEMES, BGS, FONTS, SIZES, NAV_PROTECTED, setTheme, setColors, setPrefs, resetAppearance, setNavHidden, setViewMode } from './core/prefs.js';
 import { navItems, companies, emps } from './core/legacy.js';
 import { host } from './core/host.js';
+import { setAlertPrefs } from './core/prefs.js';
+import { KINDS as ALERT_KINDS } from './core/alerts.js';
 
 // بطاقات الإعدادات الجديدة: المنشآت (14)، المظهر والألوان والخط والثيمات (15/16)، القوائم وشاشة البداية (17/21)، العرض المفضل (20).
 // الوضع الفاتح/الداكن (22) يبقى بزره القديم؛ هنا نعرض زرًا يستدعي نفس الدالة th().
@@ -19,6 +21,10 @@ const rows = computed(() => {
 const pages = computed(() => navItems().map(x => ({ ...x, locked: NAV_PROTECTED.includes(x.id) })));
 const startOptions = computed(() => pages.value.filter(p => !prefs.value.hideNav.includes(p.id) || p.id === prefs.value.start));
 
+const al = computed(() => prefs.value.alerts || { fileDays: 7, retDays: 180, off: [] });
+const alOn = (k) => !al.value.off.includes(k);
+const alToggle = (k) => setAlertPrefs({ off: alOn(k) ? [...al.value.off, k] : al.value.off.filter(x => x !== k) });
+const alNum = (key, e) => { const v = parseInt(e.target.value, 10); if (Number.isFinite(v)) setAlertPrefs({ [key]: v }); };
 const themeIds = Object.keys(THEMES);
 const bgIds = Object.keys(BGS);
 const fontIds = Object.keys(FONTS);
@@ -105,6 +111,15 @@ const curCars = () => prefs.value.view.cars || (typeof cm !== 'undefined' ? cm :
         <option value="cards">بطاقات</option><option value="table">جدول</option>
       </select>
       <div class="row"><button class="btn s" @click="host.openHelp()">اختصارات لوحة المفاتيح (?)</button></div>
+    </div>
+    <div class="card">
+      <h3>التنبيهات (53–61)</h3>
+      <p class="mut">اختر أنواع التنبيهات التي تظهر في الجرس ولوحة التحكم، وعدّل المهل.</p>
+      <div class="row">
+        <label>مهلة تقديم طلب الالتحاق (أيام)<input type="number" min="1" max="60" :value="al.fileDays" @change="alNum('fileDays', $event)" /></label>
+        <label>التنبيه قبل سن المعاش بـ (يوم)<input type="number" min="30" max="730" :value="al.retDays" @change="alNum('retDays', $event)" /></label>
+      </div>
+      <label v-for="k in ALERT_KINDS" :key="k[0]" class="mut" style="display:flex;gap:8px;align-items:center;margin:4px 0"><input type="checkbox" style="width:auto" :checked="alOn(k[0])" @change="alToggle(k[0])" /> {{ k[2] }} <small>(بند {{ k[1] }})</small></label>
     </div>
   </div>
 </template>

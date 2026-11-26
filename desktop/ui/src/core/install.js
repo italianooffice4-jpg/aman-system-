@@ -8,6 +8,7 @@ import { installShortcuts } from './shortcuts.js';
 import { navItems, curPage } from './legacy.js';
 import { host } from './host.js';
 import { debounce } from './util.js';
+import { install as installAlerts } from './alerts.js';
 
 const safe = (name, fn) => { try { fn(); } catch (e) { console.error('[AmanUI] install:' + name, e); } };
 
@@ -144,6 +145,9 @@ export function installAll() {
       if (/^(sq|tfq)\(/.test(oc)) fire(t);
     });
   });
+
+  /* (53–61) محرك التنبيهات الجديد: يغلّف alerts() وaGo() ويضيف مرشحات صفحة الموظفين */
+  safe('alerts', installAlerts);
 
   /* (1) S تفاعلية: أي حفظ يحدّث الصفحة المعروضة (Vue) والشارة تلقائيًا */
   safe('reactive', () => {

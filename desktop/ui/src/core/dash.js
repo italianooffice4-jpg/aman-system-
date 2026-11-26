@@ -1,6 +1,7 @@
 // منطق لوحة التحكم (المرحلة 2) — بدون Vue، ويقرأ نفس بيانات وحسابات البرنامج القديم (S, stats, calc, Q, TS, CS, alerts ...).
 // لا يكتب أي شيء في ins_sys_v1. الإعدادات (الشركة/الفترة/التحديث التلقائي/الملخص اليومي) في مفتاح الواجهة ins_ui_prefs فقط.
 import { getPrefs, setPrefs } from './prefs.js';
+import { openAlertTarget } from './alerts.js';
 
 export const PERIODS = [{ v: 3, l: '٣ أشهر' }, { v: 6, l: '٦ أشهر' }, { v: 12, l: '١٢ شهر' }];
 export const PALETTE = ['#7c3aed', '#0d9488', '#6366f1', '#f59e0b', '#ec4899', '#0ea5e9', '#84cc16', '#ef4444'];
@@ -192,7 +193,4 @@ export function openEmps({ co = '', s = '', x = '' } = {}) {
   nv('emp');
 }
 export function openReqs(co) { qf = { c: validCo(co) ? cn(co) : '', q: '' }; nv('req'); }
-export function openAlert(a, co) {
-  if (a.g === 'emp') openEmps({ co, x: a.x || '' });
-  else nv(a.g);
-}
+export function openAlert(a, co) { openAlertTarget(a, co); }   // المرحلة 4 (59): يفتح السجل المطلوب نفسه

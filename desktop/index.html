@@ -6,7 +6,8 @@
 <title>Aman System — نظام إدارة التأمينات</title>
 <link rel="icon" type="image/png" sizes="64x64" href="favicon-64.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Poppins:wght@300;600;700&display=swap" rel="stylesheet">
+<!-- غير حاجب للعرض: الخطوط المحلية (src/fonts) تكفي دون إنترنت؛ هذا الرابط يضيف Poppins فقط إن توفر الاتصال -->
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Poppins:wght@300;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light;--bg:#f4f5f9;--card:#fff;--tx:#1d2130;--mut:#707586;--bd:#e6e8f0;--pri:#714b67;--pri2:#017e84;--ok:#16a34a;--bad:#dc2626;--warn:#d97706;--info:#0284c7;--side:#1e1a29;--sidetx:#c9c6d6;--sh:0 1px 2px rgba(20,20,40,.04),0 6px 18px rgba(20,20,40,.06)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#12101a;--card:#1b1825;--tx:#ecebf2;--mut:#9996a8;--bd:#2b2837;--side:#0d0b13;--sh:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25)}}
@@ -91,7 +92,7 @@ input:focus,select:focus{outline:0;border-color:var(--pri);box-shadow:0 0 0 3px 
 .prog{height:6px;background:var(--bd);border-radius:5px;overflow:hidden}.prog i{display:block;height:100%;background:var(--pri2);transition:width .3s}
 #toast{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);left:50%;transform:translateX(-50%);background:var(--bad);color:#fff;padding:12px 20px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.3);z-index:60;display:none;max-width:92vw;font-weight:600;text-align:center}#toast.on{display:block;animation:pop .2s}#toast.ok{background:var(--ok)}
 #splash{position:fixed;inset:0;background:linear-gradient(135deg,#1e1a29,#3a2736 55%,#014d51);display:grid;place-items:center;z-index:100;transition:opacity .5s,visibility .5s;color:#fff;text-align:center}#splash.h{opacity:0;visibility:hidden}
-#splash div{animation:pulse 1.2s infinite alternate}@keyframes pulse{from{transform:scale(.94)}to{transform:scale(1.04)}}
+#splash div{animation:pulse 1.2s infinite alternate;will-change:transform}@keyframes pulse{from{transform:scale(.94)}to{transform:scale(1.04)}}
 .ph{display:none}
 #login{position:fixed;inset:0;z-index:80;display:none;place-items:center;background:var(--bg);overflow:auto;padding:16px}body.lo #login{display:grid}body.lo .app{display:none}
 .lbox{display:grid;grid-template-columns:1fr 1fr;width:min(900px,100%);background:var(--card);border-radius:22px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.25);animation:pop .3s}
@@ -134,7 +135,7 @@ body.sbo::after{content:"";position:fixed;inset:0;background:rgba(0,0,0,.5);z-in
 <main id="view"></main>
 </div></div>
 <div id="login"></div><div id="drawer"></div><div id="modal"></div><div id="toast"></div>
-<script src="node_modules/xlsx/dist/xlsx.full.min.js"></script>
+<script async src="node_modules/xlsx/dist/xlsx.full.min.js"></script>
 <script>
 const K='ins_sys_v1',$=i=>document.getElementById(i);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -902,7 +903,7 @@ document.addEventListener('mousedown',()=>{try{if(window.desk&&desk.refocus&&!do
 (function init(){try{const t=localStorage.getItem('ins_theme');document.documentElement.dataset.theme=t||'dark'}catch(x){}
 $('sl').innerHTML=logo(96);$('bl').innerHTML=logo(40);$('mb').innerHTML=ic('menu',19);$('gi').innerHTML=ic('search',16);
 const d=document.documentElement.dataset.theme?document.documentElement.dataset.theme=='dark':matchMedia('(prefers-color-scheme:dark)').matches;$('thb').innerHTML=ic(d?'sun':'moon',18);
-auth();setInterval(tick,30000);setTimeout(()=>$('splash').classList.add('h'),900)})();
+auth();setInterval(tick,30000);setTimeout(()=>$('splash').classList.add('h'),350)})();
 </script>
 </body>
 </html>

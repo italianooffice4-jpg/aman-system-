@@ -226,22 +226,39 @@ A.ocrReadPages=async function(pages,say){
    ====================================================================== */
 async function scanPages(mode){
   if(!window.desk){toast('المسح الضوئي متاح في نسخة البرنامج على سطح المكتب (exe) فقط. هنا اختر الملف من جهازك.');return[]}
-  if(scBusy&&Date.now()-scBusy<150000){toast('المسح قيد التنفيذ، انتظر النتيجة (حتى دقيقتين) ثم حاول مرة أخرى');return[]}
-  scBusy=Date.now();const adf=mode=='adf',pages=[];
+  /* قفل المسح: يتحرر دائمًا في finally؛ وإن بقي قفل قديم نعرض خيار إلغائه بدل رسالة «انتظر» الدائمة */
+  if(scBusy&&Date.now()-scBusy<150000){
+    if(await askYN('يوجد مسح سابق لم ينتهِ بعد.\nهل تريد إلغاءه والبدء من جديد؟','إلغاء السابق والمسح من جديد','انتظار')){try{if(desk.scanCancel)await desk.scanCancel()}catch(e){}scBusy=0;await new Promise(r=>setTimeout(r,400))}
+    else return[]
+  }
+  scBusy=Date.now();const adf=mode=='adf',pages=[];let legacy=false;
+  const call=o=>Promise.race([desk.scan(o),new Promise(r=>setTimeout(()=>r({err:'لم يرد الماسح خلال المهلة المحددة.',timeout:true}),(o.legacy?330:(o.adf?260:100))*1000))]);
   try{for(;;){
-    toast('جارٍ المسح الضوئي… لا تغلق النافذة (قد يستغرق حتى دقيقة)',1);
-    const r=await desk.scan({adf});if(r.cancel)break;
-    if(r.err){toast('لم يتم المسح: '+r.err);scBusy=0;if(!pages.length&&await askYN(r.err+'\n\nهل تريد جلب آخر ملف ممسوح بتطبيق HP Scan من مجلد المسح بدلًا من ذلك؟','جلب آخر ملف','لا'))scanLatest();break}
+    toast('جارٍ المسح الضوئي… لا تغلق النافذة'+(legacy?' (تظهر نافذة الماسح، أكمل المسح منها)':' (قد يستغرق حتى دقيقة)'),1);
+    const r=await call({adf,legacy});
+    if(r.cancel)break;
+    if(r.err){
+      toast('لم يتم المسح: '+r.err);
+      if(r.busy)break;
+      if(r.timeout&&!legacy&&!pages.length){
+        try{if(desk.scanCancel)await desk.scanCancel()}catch(e){}
+        if(await askYN(r.err+'\n\nجرّب فتح نافذة الماسح الخاصة بالتعريف بدلًا من المسح المباشر؟\n(سجل التشخيص محفوظ في ملف scan.log بمجلد بيانات البرنامج)','فتح نافذة الماسح','لا')){legacy=true;continue}
+        break
+      }
+      if(!pages.length&&await askYN(r.err+'\n\nهل تريد جلب آخر ملف ممسوح بتطبيق HP Scan من مجلد المسح بدلًا من ذلك؟','جلب آخر ملف','لا'))scanLatest();
+      break
+    }
     (r.pages||[]).forEach(p=>pages.push(u8(p)));
     if(adf)break;
     if(!(await askYN('تم مسح '+pages.length+' صفحة.\nهل تريد مسح صفحة أخرى (مثل ظهر البطاقة) وإضافتها لنفس الملف (PDF)؟','مسح صفحة أخرى','إنهاء')))break;
-  }}catch(e){toast('تعذر تشغيل المسح الضوئي')}
-  scBusy=0;return pages;
+  }}catch(e){console.error('[scan]',e);toast('تعذر تشغيل المسح الضوئي')}
+  finally{scBusy=0}
+  return pages;
 }
 function packScan(pages){
   const d=new Date(),p=n=>String(n).padStart(2,'0');
   SC.push(pdfFromJpegs(pages,`scan-${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.pdf`));
-  scl();
+  scl();try{window.dispatchEvent(new CustomEvent('aman:sc'))}catch(e){}
 }
 /* أين سنكتب البيانات المستخرجة؟ موظف مفتوح في «المستندات»، أو نموذج فيه حقول الموظف */
 A.ctx={emp:null};
