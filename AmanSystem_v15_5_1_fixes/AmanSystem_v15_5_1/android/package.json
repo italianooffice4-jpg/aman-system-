@@ -1,0 +1,25 @@
+{
+  "name": "aman-system-android",
+  "version": "11.0.0",
+  "private": true,
+  "scripts": {
+    "setup-ocr": "node scripts/setup-ocr.mjs",
+    "postinstall": "node scripts/setup-ocr.mjs || echo OCR setup skipped",
+    "prepare-www": "node scripts/prepare-www.mjs",
+    "android:init": "node scripts/android-init.mjs",
+    "android:sync": "npm run prepare-www && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/filesystem": "^7.0.0",
+    "@capacitor/share": "^7.0.0",
+    "tesseract.js": "5.1.1",
+    "tesseract.js-core": "5.1.0",
+    "xlsx": "0.18.5"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.0.0"
+  }
+}

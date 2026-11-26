@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useDataVersion, usePrefs } from './core/bridge.js';
 import { THEMES, BGS, FONTS, SIZES, NAV_PROTECTED, setTheme, setColors, setPrefs, resetAppearance, setNavHidden, setViewMode } from './core/prefs.js';
 import { navItems, companies, emps } from './core/legacy.js';

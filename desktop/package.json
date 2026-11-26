@@ -1,7 +1,7 @@
 {
   "name": "aman-system",
   "productName": "Aman System",
-  "version": "15.5.0",
+  "version": "15.5.1",
   "description": "نظام إدارة التأمينات — نسخة سطح المكتب",
   "main": "main.js",
   "private": true,
@@ -10,7 +10,7 @@
     "setup-ocr": "node scripts/setup-ocr.mjs",
     "postinstall": "node scripts/postinstall.mjs",
     "dist": "electron-builder --win nsis portable",
-    "ui:build": "vite build --config ui/vite.config.js"
+    "ui:build": "node scripts/lint-vue.mjs && vite build --config ui/vite.config.js"
   },
   "dependencies": {
     "chart.js": "^4.6.2",

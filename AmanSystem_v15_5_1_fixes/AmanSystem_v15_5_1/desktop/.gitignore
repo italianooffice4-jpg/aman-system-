@@ -1,0 +1,9 @@
+node_modules/
+dist/
+www/
+.env*
+*.jks
+*.keystore
+signing*.properties
+*.pfx
+*.p12

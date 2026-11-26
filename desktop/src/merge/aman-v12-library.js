@@ -59,20 +59,23 @@
     const items = [];
     allOwners().forEach(o => (o.docs || []).forEach(d => { if (!d.lib) items.push({ o, d }); }));
     if (!items.length) return toast('لا توجد مستندات قديمة للنقل', 1);
-    let ok = 0, bad = 0;
+    let ok = 0, bad = 0, had = 0; const failed = [];
     for (let i = 0; i < items.length; i++) {
       const { o, d } = items[i];
       try {
+        // موجود فعلًا في المكتبة (مثلًا بعد أداة استرجاع المستندات القديمة): نعلّمه فقط ولا نعدّه فشلًا
+        let have = null; try { have = await D.libGet(d.id); } catch (e) { have = null; }
+        if (have) { d.lib = 1; await _dbx('delete', d.id).catch(() => {}); ok++; had++; continue; }
         const rec = await _dbx('get', d.id);
-        if (!rec || !rec.data) { bad++; continue; }
+        if (!rec || !rec.data) { bad++; failed.push(d.name || d.id); continue; }
         const c = ctxOf(o);
         const r = await D.libSave({ id: d.id, name: rec.name || d.name, type: rec.type || d.type, data: rec.data, company: c.company, who: c.who, kind: d.kind });
-        if (r && r.ok) { d.lib = 1; await _dbx('delete', d.id).catch(() => {}); ok++; } else bad++;
-      } catch (e) { bad++; }
+        if (r && r.ok) { d.lib = 1; await _dbx('delete', d.id).catch(() => {}); ok++; } else { bad++; failed.push(d.name || d.id); }
+      } catch (e) { bad++; failed.push(d.name || d.id); }
       if (i % 5 === 0) toast('جارٍ النقل… ' + (i + 1) + ' / ' + items.length, 1);
     }
     save();
-    toast('تم نقل ' + ok + ' مستند إلى المكتبة' + (bad ? ' — تعذر ' + bad + ' (بقيت في مكانها)' : ''), 1);
+    toast('تم ' + ok + ' مستند في المكتبة' + (had ? ' (منها ' + had + ' كانت موجودة فيها بالفعل)' : '') + (bad ? ' — تعذر ' + bad + ' لأن ملفها غير موجود في البرنامج ولا في المكتبة: ' + failed.slice(0, 4).join('، ') + (failed.length > 4 ? '…' : '') : ''), bad ? 0 : 1);
     refreshCard();
   }
 

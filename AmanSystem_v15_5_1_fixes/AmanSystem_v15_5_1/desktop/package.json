@@ -1,0 +1,65 @@
+{
+  "name": "aman-system",
+  "productName": "Aman System",
+  "version": "15.5.1",
+  "description": "نظام إدارة التأمينات — نسخة سطح المكتب",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "setup-ocr": "node scripts/setup-ocr.mjs",
+    "postinstall": "node scripts/postinstall.mjs",
+    "dist": "electron-builder --win nsis portable",
+    "ui:build": "node scripts/lint-vue.mjs && vite build --config ui/vite.config.js"
+  },
+  "dependencies": {
+    "chart.js": "^4.6.2",
+    "tesseract.js": "5.1.1",
+    "tesseract.js-core": "5.1.0",
+    "xlsx": "0.18.5"
+  },
+  "devDependencies": {
+    "@primeuix/themes": "^1.0.0",
+    "@vitejs/plugin-vue": "^5.2.0",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "primevue": "^4.3.0",
+    "vite": "^6.0.0",
+    "vue": "^3.5.13"
+  },
+  "build": {
+    "appId": "com.aman.system",
+    "productName": "Aman System",
+    "asar": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "library.js",
+      "updater.js",
+      "scanwatch.js",
+      "index.html",
+      "version.json",
+      "update-config.json",
+      "*.png",
+      "src/**/*",
+      "scripts/scan.ps1",
+      "node_modules/xlsx/dist/**/*"
+    ],
+    "win": {
+      "icon": "icon-512.png",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
+    }
+  },
+  "amanShellApi": 3
+}

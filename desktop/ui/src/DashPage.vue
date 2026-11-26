@@ -75,7 +75,9 @@ watch(() => [K.value.t.act, K.value.companies, K.value.pendN, Math.round(K.value
 
 /* ---------- (23) مؤشرات قابلة للضغط ---------- */
 const openActive = () => DH.openEmps({ co: co.value, s: 'active' });
-const openCompanies = () => nv('comp');
+// القالب لا يرى دوال البرنامج القديم العامة (nv) مباشرة؛ نمرّرها عبر دالة في السكربت
+const nav = (p) => nv(p);
+const openCompanies = () => nav('comp');
 const openPend = () => DH.openReqs(co.value);
 const totalOpen = ref(false), reviewOpen = ref(false), revCat = ref('');
 function openReview(k) { revCat.value = k || (rv.value.cats[0] ? rv.value.cats[0].k : ''); reviewOpen.value = true; }
@@ -232,7 +234,7 @@ defineExpose({ refresh });
         <div v-if="ex.all.length" class="dv-chips">
           <span class="tag r">منتهية {{ num(ex.expired) }}</span><span class="tag w">خلال ٣٠ يومًا {{ num(ex.soon) }}</span><span class="tag a">سارية {{ num(ex.ok) }}</span>
         </div>
-        <button v-for="x in exRows" :key="x.id" type="button" class="dv-exr" @click="nv('cars')">
+        <button v-for="x in exRows" :key="x.id" type="button" class="dv-exr" @click="nav('cars')">
           <span class="n">{{ x.what }} — <b>{{ x.plate }}</b></span>
           <span class="tag" :class="x.sev">{{ x.txt }}</span>
           <span class="dv-exb"><i :class="'t-' + x.sev" :style="{ width: (ready ? x.w : 0) + '%' }"></i></span>
@@ -243,7 +245,7 @@ defineExpose({ refresh });
 
       <div class="dvp t">
         <h4><span v-html="ico('clip')"></span> طلبات بانتظار المراجعة ({{ num(K.pendN) }})</h4>
-        <div v-for="(r, i) in K.pend.slice(0, 4)" :key="r.id || i" class="it"><span>{{ r.name }}</span><Button size="small" severity="secondary" label="مراجعة" @click="nv('req')" /></div>
+        <div v-for="(r, i) in K.pend.slice(0, 4)" :key="r.id || i" class="it"><span>{{ r.name }}</span><Button size="small" severity="secondary" label="مراجعة" @click="nav('req')" /></div>
         <p v-if="!K.pendN" class="mut">لا توجد طلبات معلّقة.</p>
       </div>
     </div>
@@ -302,7 +304,7 @@ defineExpose({ refresh });
         <tr class="dv-tot"><td>الإجمالي</td><td>{{ num(t.act) }}</td><td>{{ money(t.a) }}</td><td>{{ money(t.b) }}</td><td><b>{{ money(t.t) }}</b></td></tr>
       </table></div>
       <p class="mut">الأجر التأميني يُحسب بين الحد الأدنى والأقصى المضبوطين في الإعدادات، ويشمل المؤمن عليهم النشطين فقط.</p>
-      <template #foot><button type="button" class="btn" @click="totalOpen = false; nv('fin')">التقارير المالية</button><button type="button" class="btn s" @click="totalOpen = false">إغلاق</button></template>
+      <template #foot><button type="button" class="btn" @click="totalOpen = false; nav('fin')">التقارير المالية</button><button type="button" class="btn s" @click="totalOpen = false">إغلاق</button></template>
     </DashModal>
 
     <!-- (29) نافذة: الملفات التي تحتاج مراجعة -->

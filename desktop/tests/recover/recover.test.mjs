@@ -1,0 +1,27 @@
+// node tests/recover/recover.test.mjs  — منطق تحويل مستندات IndexedDB القديمة إلى مكتبة الملفات
+import fs from 'node:fs'; import path from 'node:path'; import os from 'node:os'; import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const { Recovery } = require('../../tools/recover-old/recover.js'); const { Library } = require('../../library.js');
+let ok = 0, bad = 0; const chk = (n, c, x) => { if (c) { ok++; console.log('✔', n); } else { bad++; console.log('✘', n, x === undefined ? '' : x); } };
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rec-'));
+const du = (txt, type = 'application/pdf') => `data:${type};base64,${Buffer.from(txt).toString('base64')}`;
+const S = { companies: [{ id: 'c1', name: 'شركة النيل' }], emps: [{ id: 'e1', cid: 'c1', name: 'محمد عبده', nid: '29001010100012', docs: [{ id: 'd1', name: 'scan.pdf', kind: 'التحاق' }, { id: 'd2', name: 'id.jpg', kind: 'بطاقة' }] }], cars: [{ id: 'k1', plate: 'أ ب ج 123', docs: [{ id: 'd3', name: 'رخصة.pdf', kind: 'ترخيص' }] }] };
+const r = new Recovery(dir, S);
+r.add({ id: 'd1', name: 'scan.pdf', type: 'application/pdf', data: du('PDF-1') });
+r.add({ id: 'd2', name: 'id.jpg', type: 'image/jpeg', data: du('JPG', 'image/jpeg') });
+r.add({ id: 'd3', name: 'رخصة.pdf', type: 'application/pdf', data: du('PDF-3') });
+r.add({ id: 'd9', name: 'غريب.pdf', type: 'application/pdf', data: du('PDF-9') });
+r.add({ id: 'bad', name: 'x.pdf', type: 'application/pdf' });
+const s = r.summary();
+chk('عدّاد: 4 حُفظت، 1 غير مرتبط، 1 خطأ', s.saved === 4 && s.orphan === 1 && s.errors.length === 1 && s.total === 5, s);
+chk('هيكل المكتبة: شركة/موظف - رقم قومي/نوع', fs.existsSync(path.join(dir, 'المستندات', 'شركة النيل', 'محمد عبده - 29001010100012', 'التحاق', 'scan [d1].pdf')));
+chk('مستندات السيارات في مجلد السيارات/اللوحة', fs.existsSync(path.join(dir, 'المستندات', 'السيارات', 'أ ب ج 123', 'ترخيص')));
+chk('غير المرتبط في مجلد منفصل', fs.existsSync(path.join(dir, 'المستندات', '_مستندات غير مرتبطة')));
+const lib = new Library(dir); const g = lib.get('d1');
+chk('المكتبة تقرأ المستند بالـ id وبنفس المحتوى', g && Buffer.from(g.data.split(',')[1], 'base64').toString() === 'PDF-1' && g.type === 'application/pdf', g);
+const lib2 = new Library(dir); lib2.idx = null; fs.rmSync(path.join(dir, '_البيانات', 'index.json'));
+chk('فهرس ضائع يُعاد بناؤه من الملفات ويجد المستندات', new Library(dir).has('d2') && new Library(dir).has('d3'));
+const r2 = new Recovery(dir, S); r2.add({ id: 'd1', name: 'scan.pdf', type: 'application/pdf', data: du('CHANGED') });
+chk('إعادة التشغيل لا تكتب فوق الموجود', r2.summary().skipped === 1 && r2.summary().saved === 0 && Buffer.from(new Library(dir).get('d1').data.split(',')[1], 'base64').toString() === 'PDF-1');
+fs.rmSync(dir, { recursive: true, force: true });
+console.log(`\n${ok} نجح • ${bad} فشل`); process.exit(bad ? 1 : 0);
