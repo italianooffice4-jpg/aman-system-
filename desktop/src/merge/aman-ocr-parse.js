@@ -71,7 +71,7 @@ const cleanName=s=>cleanAr(s).replace(/[\d\-\/.,،]/g,' ').split(/\s+/).filter(w
 
 function parseCard(text){
   const raw=String(text||'');
-  const res={nid:'',nidValid:false,name:'',job:'',addr:{raw:'',b:'',s:'',v:'',d:'',g:''},nidCands:[],raw};
+  const res={nid:'',nidValid:false,name:'',job:'',addr:{raw:'',b:'',s:'',v:'',d:'',g:''},nidCands:[],raw,exp:''};
   const f=findNID(raw);res.nid=f.id;res.nidValid=f.valid;res.nidCands=f.cands;
   const lines=raw.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
   /* سطر الرقم القومي */
@@ -116,19 +116,36 @@ function parseCard(text){
   /* احتياطي: لو لم تُطابق الأنماط شيئاً، السطر الأول من العنوان = الشارع/الموقع، والثاني (بدون المحافظة) = القسم/المركز */
   if(!res.addr.s&&addrL.length)res.addr.s=dig(cleanAr(addrL[0])).trim();
   if(!res.addr.d&&addrL.length>1){let d=dig(cleanAr(addrL[1])),parts=d.split(/\s*[-–]\s*/).filter(Boolean);if(gv&&parts.length>1&&nz(parts[parts.length-1]).replace(/^محافظه /,'')===nz(gv))parts.pop();d=parts.join(' - ').trim();if(d)res.addr.d=d}
+  res.exp=parseExpiry(raw);
   return res;
+}
+
+/* (67) تاريخ انتهاء البطاقة: يفضّل تاريخًا يلي كلمة (الانتهاء/صالحة حتى/حتى)؛ وإلا فأحدث تاريخين متباعدين 5 سنوات فأكثر (إصدار/انتهاء)؛ تاريخ منفرد بلا سياق لا يُعتمد */
+function parseExpiry(text){
+  const t=dig(String(text||'')),out=[];
+  const ok=(y,m,d)=>{if(y<2000||y>2100||m<1||m>12||d<1||d>31)return '';const dt=new Date(y,m-1,d);return dt.getFullYear()===y&&dt.getMonth()===m-1&&dt.getDate()===d?y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'):''};
+  const lines=t.split(/\r?\n/);
+  lines.forEach((ln,li)=>{
+    const ctx=/(الانتهاء|انتهاء|صالح[هة]?\s*حتى|صالح[هة]?\s*حتي|حتى|حتي)/.test(nz(ln))||(li>0&&/(الانتهاء|انتهاء|صالح[هة]?\s*حتى)/.test(nz(lines[li-1])));
+    let m;const re=/(\d{1,2})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{4})|(\d{4})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{1,2})/g;
+    while((m=re.exec(ln))){const iso=m[1]?ok(+m[3],+m[2],+m[1]):ok(+m[4],+m[5],+m[6]);if(iso)out.push({iso,ctx})}
+  });
+  const c=out.filter(x=>x.ctx);if(c.length)return c.sort((a,b)=>a.iso<b.iso?1:-1)[0].iso;
+  const u=[...new Set(out.map(x=>x.iso))].sort();
+  if(u.length>=2){const a=u[0],b=u[u.length-1];if((new Date(b)-new Date(a))/864e5>=5*365)return b}
+  return '';
 }
 /* دمج نتائج عدة صفحات (وجه + ظهر): أول قيمة غير فارغة، والرقم القومي الصالح له الأولوية */
 function merge(list){
-  const o={nid:'',nidValid:false,name:'',job:'',addr:{raw:'',b:'',s:'',v:'',d:'',g:''},nidCands:[],raw:''};
+  const o={nid:'',nidValid:false,name:'',job:'',addr:{raw:'',b:'',s:'',v:'',d:'',g:''},nidCands:[],raw:'',exp:''};
   list.forEach(r=>{
     if(r.nid&&(!o.nid||(r.nidValid&&!o.nidValid))){o.nid=r.nid;o.nidValid=r.nidValid}
-    if(!o.name&&r.name)o.name=r.name;if(!o.job&&r.job)o.job=r.job;
+    if(!o.exp&&r.exp)o.exp=r.exp;if(!o.name&&r.name)o.name=r.name;if(!o.job&&r.job)o.job=r.job;
     Object.keys(o.addr).forEach(k=>{if(!o.addr[k]&&r.addr[k])o.addr[k]=r.addr[k]});
     o.nidCands.push(...r.nidCands);o.raw+=(o.raw?'\n----\n':'')+r.raw;
   });
   return o;
 }
-const API={parseCard,findNID,nidOK,voteNID,merge,dig,nz,GOV};
+const API={parseExpiry,parseCard,findNID,nidOK,voteNID,merge,dig,nz,GOV};
 if(typeof module!=='undefined'&&module.exports)module.exports=API;else root.a9parse=API;
 })(typeof window!=='undefined'?window:globalThis);

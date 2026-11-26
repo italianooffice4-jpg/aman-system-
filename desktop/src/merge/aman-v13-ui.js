@@ -91,7 +91,7 @@
    المفاتيح: ins_ui_form (النموذج) و ins_ui_file (ملف الموظف) — '0' يعني الشكل القديم.
    ====================================================================== */
 (function () {
-  const L = window.amanLegacy = Object.assign(window.amanLegacy || {}, { editE: editE, regQ: regQ, prof: prof });
+  const L = window.amanLegacy = Object.assign(window.amanLegacy || {}, { editE: editE, regQ: regQ, prof: prof, docs: docs });
   const on = (k) => { try { return localStorage.getItem(k) !== '0'; } catch (e) { return true; } };
   const ready = (fn) => !!(window.AmanUI && typeof window.AmanUI[fn] === 'function' && window.AmanUI.hostReady && window.AmanUI.hostReady());
   window.amanSwitchEmpUI = (v) => { try { localStorage.setItem('ins_ui_form', v ? '1' : '0'); localStorage.setItem('ins_ui_file', v ? '1' : '0'); } catch (e) {} };
@@ -115,6 +115,13 @@
       try { window.AmanUI.openEmpFile(id); return; } catch (e) { console.error(e); }
     }
     return L.prof.apply(this, arguments);
+  };
+  /* v15 المرحلة 5 — معرض المستندات (62–65) بديل docs() القديمة؛ المفتاح ins_ui_docs ('0' = القديم) */
+  docs = function (id) {
+    if (on('ins_ui_docs') && ready('openDocs') && S.emps.some((x) => x.id == id)) {
+      try { window.AmanUI.openDocs(id); return; } catch (e) { console.error(e); }
+    }
+    return L.docs.apply(this, arguments);
   };
 })();
 

@@ -9,6 +9,8 @@ import { navItems, curPage } from './legacy.js';
 import { host } from './host.js';
 import { debounce } from './util.js';
 import { install as installAlerts } from './alerts.js';
+import { install as installAssist } from './assist.js';
+import { install as installIncoming } from './incoming.js';
 
 const safe = (name, fn) => { try { fn(); } catch (e) { console.error('[AmanUI] install:' + name, e); } };
 
@@ -148,6 +150,8 @@ export function installAll() {
 
   /* (53–61) محرك التنبيهات الجديد: يغلّف alerts() وaGo() ويضيف مرشحات صفحة الموظفين */
   safe('alerts', installAlerts);
+  safe('incoming', installIncoming);    // (66) ملفات مجلد الماسح
+  safe('assist', installAssist);        // (68/69) أسئلة مركبة + تدقيق التناقضات
 
   /* (1) S تفاعلية: أي حفظ يحدّث الصفحة المعروضة (Vue) والشارة تلقائيًا */
   safe('reactive', () => {

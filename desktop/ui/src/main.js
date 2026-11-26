@@ -17,6 +17,7 @@ import * as store from './core/store.js';
 import * as prefs from './core/prefs.js';
 import * as notify from './core/notify.js';
 import * as search from './core/search.js';
+import * as incoming from './core/incoming.js';
 import * as shortcuts from './core/shortcuts.js';
 import './style.css';
 
@@ -74,10 +75,12 @@ window.AmanUI = {
   hostReady: () => !!host.ready,
   openEmpForm: (id, o) => { if (!host.openEmpForm) throw new Error('empform host not ready'); host.openEmpForm(id, o); },
   openEmpFile: (id, tab) => { if (!host.openEmpFile) throw new Error('empfile host not ready'); host.openEmpFile(id, tab); },
+  openDocs: (id) => { if (!host.openDocs) throw new Error('docs host not ready'); host.openDocs(id); },
+  openReport: (spec) => { if (!host.openReport) throw new Error('report host not ready'); host.openReport(spec); },
   refresh: () => { if (vm && vm.refresh) vm.refresh(); },
   active: () => !!app
 };
-window.AmanCore = { store, prefs, notify, search, shortcuts, host };   // للفحص والاختبار من وحدة التحكم
+window.AmanCore = { store, prefs, notify, search, shortcuts, host, incoming };   // للفحص والاختبار من وحدة التحكم
 
 installAll();    // تغليف الدوال القديمة (toast، الجرس، البحث، EL، الدخول…) — كل جزء معزول ويعود للأصل عند الفشل
 // تركيب التطبيق العام (إشعارات/جرس/بحث) يُؤجَّل لما بعد أول رسم لشاشة الدخول: بناء ثيم PrimeVue ثقيل ويجمّد الشعار.

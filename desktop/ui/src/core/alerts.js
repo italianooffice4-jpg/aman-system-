@@ -8,6 +8,7 @@ export const KINDS = [
   ['doc7', '53', 'مستند/ترخيص سيارة ينتهي خلال 7 أيام أو انتهى'],
   ['doc15', '53', 'مستند/ترخيص سيارة ينتهي خلال 15 يومًا'],
   ['doc30', '53', 'مستند/ترخيص سيارة ينتهي خلال 30 يومًا'],
+  ['idexp', '53', 'بطاقة رقم قومي منتهية أو تنتهي خلال 30 يومًا'],
   ['nodocs', '54', 'موظفون بمستندات ناقصة'],
   ['noout', '55', 'مستقيل بدون طلب خروج مسجل'],
   ['inc', '56', 'موظفون ببيانات ناقصة'],
@@ -43,12 +44,13 @@ const isIn = (e) => e.status == 'active';
 export const F = {
   nodocs: (e) => (isIn(e) ? !(e.docs || []).length : !(e.docs || []).some((d) => d.kind === 'استقالة')),
   inc: (e) => (isIn(e) ? bad14(e) || !e.start || !(+e.wage > 0) : !e.end),
+  idexp: (e) => { if (!isIn(e) || !e.nidExp) return false; return dayN(e.nidExp) <= 30; },
   retnow: (e) => { if (!isIn(e)) return false; const r = retireInfo(e); return !!r && r.days <= 0; },
   retsoon: (e) => { if (!isIn(e)) return false; const r = retireInfo(e); return !!r && r.days > 0 && r.days <= getAlertPrefs().retDays; },
   latein: (e) => { if (!isIn(e) || e.reqIn || !e.start) return false; return -dayN(e.start) >= getAlertPrefs().fileDays; }
 };
 export const LABELS = {
-  nodocs: 'مستندات ناقصة', inc: 'بيانات ناقصة', retnow: 'بلغ سن المعاش', retsoon: 'مقبل على سن المعاش', latein: 'طلب التحاق لم يُقدَّم'
+  idexp: 'بطاقة منتهية/تنتهي قريبًا', nodocs: 'مستندات ناقصة', inc: 'بيانات ناقصة', retnow: 'بلغ سن المعاش', retsoon: 'مقبل على سن المعاش', latein: 'طلب التحاق لم يُقدَّم'
 };
 export function installFilters() {
   Object.keys(F).forEach((k) => { if (!XF2[k]) XF2[k] = F[k]; if (!XL[k]) XL[k] = LABELS[k]; });
@@ -79,6 +81,8 @@ export function build(a) {
   /* 54/55/56/60/61: الموظفون */
   try {
     const E = S.emps;
+    const ie = E.filter(F.idexp);
+    if (ie.length) sink.push({ k: 'idexp', s: ie.some((e) => dayN(e.nidExp) < 0) ? 'r' : 'w', i: 'clock', t: fm(ie.length) + ' بطاقة رقم قومي منتهية أو تنتهي خلال 30 يومًا' + one(ie, (e) => e.name), g: 'emp', x: 'idexp', ...rec(ie) });
     const nd = E.filter(F.nodocs);
     if (nd.length) sink.push({ k: 'nodocs', s: 'w', i: 'pclip', t: fm(nd.length) + ' موظف مستنداته ناقصة (مؤمن عليه بلا أي مستند، أو مستقيل بلا مستند استقالة)' + one(nd, (e) => e.name), g: 'emp', x: 'nodocs', ...rec(nd) });
     const no = E.filter(XF2.noout);

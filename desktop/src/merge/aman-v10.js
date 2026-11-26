@@ -197,6 +197,12 @@ async function readCanvas(w,cv,say){
     if(score(r2)>score(r))r=r2;r.nid='';r.nidValid=false;r.nidCands=[];
     raw+='\n\n— قراءة البطاقة كاملة —\n'+t2;
   }
+  if(!r.exp){
+    try{say('قراءة تاريخ الانتهاء',0);
+      const dd=await recog(w,cropCv(bv,0,.74,1,.26,1500),{tessedit_pageseg_mode:'6',tessedit_char_whitelist:'0123456789/-. :'});
+      const tx=(dd.text||'').trim(),ex=PRS.parseExpiry?PRS.parseExpiry(tx):'';if(ex)r.exp=ex;raw+='\n\n— شريط التاريخ —\n'+tx;
+    }catch(e){}
+  }
   r.raw=raw;
   return r;
 }
@@ -310,20 +316,20 @@ A.ocrRun=async function(pages){
 };
 
 /* ---------- شاشة المراجعة (نافذة مستقلة حتى لا تفقد الملف الممسوح) ---------- */
-const FLD=[['name','الاسم'],['nid','الرقم القومي'],['job','الوظيفة'],['addr_b','محل الإقامة: عقار رقم'],['addr_s','الشارع'],['addr_v','القرية'],['addr_d','القسم / المركز'],['addr_g','المحافظة']];
-const curVal=(t,k)=>t.type==='emp'?(t.e[k]||''):(($('f_'+k)||{}).value||'');
+const FLD=[['exp','تاريخ انتهاء البطاقة (يوم/شهر/سنة)'],['name','الاسم'],['nid','الرقم القومي'],['job','الوظيفة'],['addr_b','محل الإقامة: عقار رقم'],['addr_s','الشارع'],['addr_v','القرية'],['addr_d','القسم / المركز'],['addr_g','المحافظة']];
+const curVal=(t,k)=>k==='exp'?(t.type==='emp'&&t.e.nidExp?dmy(t.e.nidExp):''):t.type==='emp'?(t.e[k]||''):(($('f_'+k)||{}).value||'');
 A.ocrReview=function({res,previews}){
-  const t=ocrTarget(),vals={name:res.name,nid:res.nid,job:res.job,addr_b:res.addr.b,addr_s:res.addr.s,addr_v:res.addr.v,addr_d:res.addr.d,addr_g:res.addr.g};
+  const t=ocrTarget(),expOk=!!res.exp&&res.exp>=today()&&res.exp<=new Date(Date.now()+16*365*864e5).toISOString().slice(0,10),vals={exp:res.exp?dmy(res.exp):'',name:res.name,nid:res.nid,job:res.job,addr_b:res.addr.b,addr_s:res.addr.s,addr_v:res.addr.v,addr_d:res.addr.d,addr_g:res.addr.g};
   if(!Object.values(vals).some(Boolean)&&!res.raw.trim()){return toast('لم يُقرأ أي نص من الصورة. تأكد أن البطاقة واضحة ومسطّحة على الزجاج ثم أعد المسح.')}
   const info=id=>{if(!id)return '';const r=A.nid?A.nid(id):null;return r&&r.valid?`✔ ${r.gender} · مواليد ${dmy(r.birth)} · ${r.gov}`:`✖ ${r?r.error:'رقم غير صالح'}`};
   const dup=id=>{const o=id&&S.emps.find(x=>x.nid==id&&(!t||t.type!=='emp'||x.id!=t.e.id));return o?o.name:''};
   const o=document.createElement('div');o.className='ocr-ov';
-  const row=([k,l])=>{const v=vals[k]||'',c=t?curVal(t,k):'',diff=c&&v&&c!==v,chk=v&&(!c||c===v||false)&&(k!=='nid'||res.nidValid);
+  const row=([k,l])=>{const v=vals[k]||'',c=t?curVal(t,k):'',diff=c&&v&&c!==v,chk=v&&(!c||c===v||false)&&(k!=='nid'||res.nidValid)&&(k!=='exp'||expOk);
     return `<div class=orow><label class=ock><input type=checkbox data-k='${k}' ${chk?'checked':''}> ${l}</label><input data-v='${k}' value="${esc(v)}" ${k==='nid'?'dir=ltr inputmode=numeric':''}>${diff?`<small class=ocur>الحالي: ${esc(c)} <a onclick="this.closest('.orow').querySelector('[data-k]').checked=true">استبدال</a></small>`:''}${k==='nid'?`<small class=onid data-i>${esc(info(v))}</small>${dup(v)?`<small class=owarn>⚠ هذا الرقم مسجل لموظف آخر: ${esc(dup(v))}</small>`:''}`:''}</div>`};
   o.innerHTML=`<div class='mb ocr-rv'><h3>${ic('scan',20)} البيانات المقروءة من البطاقة</h3>
 <p class=mut>راجع القيم وعدّلها عند الحاجة، ثم اختر ما تريد تطبيقه. القراءة الآلية قد تخطئ في بعض الحروف أو الأرقام، فتأكد خصوصاً من الرقم القومي.</p>
 ${res.nidValid?'':`<p class=owarn>اكتب الرقم القومي بنفسك (لا يُقرأ آلياً)، وراجع الاسم والعنوان فالقراءة الآلية قد تخطئ في بعض الحروف.</p>`}
-<div class=orv-b><div class=oprev>${previews.map(p=>`<img src="${p}" alt="" title="اضغط للتكبير">`).join('')}</div><div class=orv-f><div class=ogrid>${FLD.map(row).join('')}</div>
+<div class=orv-b><div class=oprev>${previews.map(p=>`<img src="${p}" alt="" title="اضغط للتكبير">`).join('')}</div><div class=orv-f><div class=ogrid>${FLD.filter(f=>f[0]!=='exp'||(t&&t.type==='emp')).map(row).join('')}</div>
 <details class=oraw><summary>النص الخام المقروء (للنسخ منه عند الحاجة)</summary><pre>${esc(res.raw)}</pre></details></div></div>
 <div class=row><button class=btn id=oap>${ic('check',15)} ${t?(t.type==='emp'?'تطبيق على ملف الموظف':'تعبئة الحقول'):'إغلاق'}</button><button class='btn s' id=ocn>إلغاء</button></div></div>`;
   document.body.appendChild(o);
@@ -335,10 +341,11 @@ ${res.nidValid?'':`<p class=owarn>اكتب الرقم القومي بنفسك (�
   o.querySelector('#ocn').onclick=done;
   o.querySelector('#oap').onclick=()=>{
     if(!t)return done();
-    const pick={};FLD.forEach(([k])=>{const c=o.querySelector(`[data-k=${k}]`);if(c&&c.checked){let v=o.querySelector(`[data-v=${k}]`).value.trim();if(k==='nid')v=PRS.dig(v).replace(/\D/g,'');if(v)pick[k]=v}});
+    const pick={};FLD.forEach(([k])=>{const c=o.querySelector(`[data-k=${k}]`);if(c&&c.checked){let v=o.querySelector(`[data-v=${k}]`).value.trim();if(k==='nid')v=PRS.dig(v).replace(/\D/g,'');if(k==='exp'){const iso=v?pd(PRS.dig(v)):null;if(v&&iso===null){pick.__bad=1;return}v=iso||''}if(v)pick[k]=v}});if(pick.__bad)return toast('تاريخ الانتهاء غير صحيح؛ اكتبه يوم/شهر/سنة');
     const n=Object.keys(pick).length;if(!n)return toast('لم تحدد أي حقل للتطبيق');
     if(pick.nid&&pick.nid.length!==14)return toast('الرقم القومي يجب أن يكون 14 رقماً');
     if(t.type==='emp'){
+      if(pick.exp){t.e.nidExp=pick.exp;delete pick.exp}
       Object.assign(t.e,pick);lg('قراءة بطاقة (OCR)',t.e.name,t.e.id);save();go(cur);
     }else{
       Object.keys(pick).forEach(k=>{const el=$('f_'+k);if(el){el.value=pick[k];el.dispatchEvent(new Event('input',{bubbles:true}))}});

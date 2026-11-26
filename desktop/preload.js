@@ -30,6 +30,11 @@ contextBridge.exposeInMainWorld('desk', {
   latestScan: (dir) => ipcRenderer.invoke('desk:latestScan', dir),
   scan: (opts) => ipcRenderer.invoke('desk:scan', opts),
   scanCancel: () => ipcRenderer.invoke('desk:scanCancel'),
+  scanWatchState: () => ipcRenderer.invoke('desk:scanWatchState'),
+  scanWatchChoose: () => ipcRenderer.invoke('desk:scanWatchChoose'),
+  scanWatchStop: () => ipcRenderer.invoke('desk:scanWatchStop'),
+  scanWatchRead: (name) => ipcRenderer.invoke('desk:scanWatchRead', name),
+  onScanFile: (cb) => ipcRenderer.on('desk:scanFile', (_e, f) => cb(f)),
   ai: (opts) => ipcRenderer.invoke('desk:ai', opts),
   // التحديث من GitHub
   updInfo: () => ipcRenderer.invoke('desk:updInfo'),

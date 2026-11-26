@@ -7,6 +7,8 @@ import QuickSearch from './QuickSearch.vue';
 import DailySummary from './DailySummary.vue';
 import EmpForm from './EmpForm.vue';
 import EmpFile from './EmpFile.vue';
+import DocsGallery from './DocsGallery.vue';
+import ReportDialog from './ReportDialog.vue';
 import { hasSummary, getDash, setDash } from './core/dash.js';
 import { host } from './core/host.js';
 import { onSeq } from './core/shortcuts.js';
@@ -17,7 +19,12 @@ const bellOpen = ref(false), helpOpen = ref(false), searchOpen = ref(false), seq
 // المرحلة 3: نموذج الموظف (EmpForm) وملفه (EmpFile). أي خطأ داخلهما يُغلقهما ويفتح الشكل القديم دون تعطيل باقي الواجهة.
 const formS = reactive({ open: false, id: '', reqId: '' });
 const fileS = reactive({ open: false, id: '', tab: 'data' });
+const docS = reactive({ open: false, id: '' });
+const repS = ref(null);
 const legacyFns = () => window.amanLegacy || {};
+function openDocs(id) { formS.open = false; fileS.open = false; try { if (window.a9 && a9.ctx) a9.ctx.emp = id; SC = []; } catch (e) { /* لا شيء */ } Object.assign(docS, { open: true, id }); }
+function docsLegacy() { const id = docS.id; docS.open = false; try { const l = legacyFns(); if (l.docs) l.docs(id); } catch (e) { console.error('[AmanUI]', e); } }
+function openReport(spec) { repS.value = typeof spec === 'string' ? ((window.amanReports && window.amanReports.get(spec)) || null) : spec; }
 function openForm(id, o) { fileS.open = false; Object.assign(formS, { open: true, id: id || '', reqId: (o && o.reqId) || '' }); }
 function openFile(id, tab) { formS.open = false; Object.assign(fileS, { open: true, id, tab: tab || 'data' }); }
 function formLegacy() { const { id, reqId } = formS; formS.open = false; const l = legacyFns(); try { if (reqId && l.regQ) l.regQ(reqId); else if (l.editE) l.editE(id || undefined); } catch (e) { console.error('[AmanUI]', e); } }
@@ -25,9 +32,9 @@ function fileLegacy() { const id = fileS.id; fileS.open = false; try { const l =
 function fileEdit(id) { fileS.open = false; openForm(id); }
 onErrorCaptured((err, inst) => {
   const n = inst && inst.type && (inst.type.__name || inst.type.name);
-  if (n !== 'EmpForm' && n !== 'EmpFile') return true;      // غير ذلك: المعالج العام كما كان
+  if (n !== 'EmpForm' && n !== 'EmpFile' && n !== 'DocsGallery') return true;      // غير ذلك: المعالج العام كما كان
   console.error('[AmanUI] ' + n, err);
-  if (n === 'EmpForm') formLegacy(); else fileLegacy();
+  if (n === 'EmpForm') formLegacy(); else if (n === 'DocsGallery') docsLegacy(); else fileLegacy();
   try { toast('تعذر عرض الشكل الجديد، تم فتح الشكل القديم'); } catch (e) { /* لا شيء */ }
   return false;
 });
@@ -59,6 +66,8 @@ onMounted(() => {
   host.maybeSummary = () => { const d = getDash(); if (!d.summary || d.sumDay === today() || !hasSummary()) return; host.openSummary(); };
   host.openEmpForm = openForm;
   host.openEmpFile = openFile;
+  host.openDocs = openDocs;
+  host.openReport = openReport;
   host.ready = true;
   offSeq = onSeq((v) => { seq.value = v; });
   document.addEventListener('mousedown', onDoc, true);
@@ -66,7 +75,7 @@ onMounted(() => {
   window.addEventListener('resize', placeBell);
 });
 onBeforeUnmount(() => {
-  host.ready = false; host.openEmpForm = null; host.openEmpFile = null;
+  host.ready = false; host.openEmpForm = null; host.openEmpFile = null; host.openDocs = null; host.openReport = null;
   if (offSeq) offSeq();
   document.removeEventListener('mousedown', onDoc, true);
   document.removeEventListener('keydown', onKey);
@@ -84,5 +93,7 @@ onBeforeUnmount(() => {
   <DailySummary :open="sumOpen" @close="sumOpen = false" />
   <EmpForm :open="formS.open" :emp-id="formS.id" :req-id="formS.reqId" @close="formS.open = false" @legacy="formLegacy" />
   <EmpFile :open="fileS.open" :emp-id="fileS.id" :tab="fileS.tab" @close="fileS.open = false" @edit="fileEdit" @legacy="fileLegacy" />
+  <DocsGallery :open="docS.open" :emp-id="docS.id" @close="docS.open = false" @legacy="docsLegacy" />
+  <ReportDialog :spec="repS" @close="repS = null" />
   <div v-if="seq" class="at-seq">G ← اضغط حرف الصفحة: D لوحة · E موظفون · C شركات · Q طلبات · M مطابقة · F مالية · P استمارات · S إعدادات</div>
 </template>

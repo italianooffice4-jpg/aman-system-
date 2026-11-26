@@ -6,6 +6,7 @@ const os = require('os');
 const { execFile } = require('child_process');
 const { Library } = require('./library');
 const { Updater } = require('./updater');
+const SW = require('./scanwatch');
 
 const ROOT = app.getAppPath();
 const SCHEME = 'app';
@@ -71,6 +72,7 @@ app.whenReady().then(async () => {
   });
   await firstRunLibrary();
   createWindow();
+  try { const wd = (readCfg().scan || {}).watchDir; if (wd) startScanWatch(wd); } catch (e) { /* لا شيء */ }
   scheduleUpdateChecks();
   app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });
 });
@@ -238,6 +240,30 @@ ipcMain.handle('desk:scan', async (_e, opts = {}) => {
     if (out) { try { fs.rmSync(out, { recursive: true, force: true }); } catch (e) { /* لا شيء */ } }
   }
 });
+
+// ---------- (66) مراقبة مجلد الماسح ----------
+let scanWatcher = null, scanWatchDir = '';
+function stopScanWatch() { try { if (scanWatcher) scanWatcher.close(); } catch (e) { /* لا شيء */ } scanWatcher = null; scanWatchDir = ''; }
+function startScanWatch(dir) {
+  stopScanWatch();
+  if (!dir || !fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) return { ok: false, err: 'المجلد غير موجود' };
+  const w = SW.startWatch(dir, (f) => { try { if (win && !win.isDestroyed()) win.webContents.send('desk:scanFile', f); } catch (e) { /* لا شيء */ } });
+  if (w.error) return { ok: false, err: w.error };
+  scanWatcher = w; scanWatchDir = dir; logScan('watch start ' + dir);
+  return { ok: true, dir };
+}
+ipcMain.handle('desk:scanWatchState', () => ({ dir: scanWatchDir, on: !!scanWatcher, saved: ((readCfg().scan || {}).watchDir) || '' }));
+ipcMain.handle('desk:scanWatchChoose', async () => {
+  const def = path.join(app.getPath('documents'), 'Scanned Documents');
+  const r = await dialog.showOpenDialog(win, { title: 'اختر المجلد الذي يحفظ فيه الماسح (HP Scan وغيره) ملفاته', properties: ['openDirectory'], defaultPath: fs.existsSync(def) ? def : app.getPath('documents') });
+  if (r.canceled || !r.filePaths[0]) return { cancel: true };
+  const res = startScanWatch(r.filePaths[0]);
+  if (res.ok) { const c = readCfg(); writeCfg({ ...c, scan: { ...(c.scan || {}), watchDir: r.filePaths[0] } }); }
+  return res;
+});
+ipcMain.handle('desk:scanWatchStop', () => { stopScanWatch(); const c = readCfg(); writeCfg({ ...c, scan: { ...(c.scan || {}), watchDir: '' } }); return { ok: true }; });
+ipcMain.handle('desk:scanWatchRead', (_e, name) => SW.readIncoming(scanWatchDir, name));
+app.on('will-quit', stopScanWatch);
 
 // ---------- الذكاء الاصطناعي (OpenAI / Claude / Ollama) ----------
 ipcMain.handle('desk:ai', async (_e, o = {}) => {
