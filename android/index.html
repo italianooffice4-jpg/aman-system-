@@ -226,7 +226,8 @@ let AL=[];
 const alH=()=>{AL=alerts();return AL.map((a,i)=>`<button class='al ${a.s}' onclick=aGo(${i})><i>${ic(a.i,18)}</i><span>${a.t}</span></button>`).join('')||`<p class=mut>${ic('check',16)} لا توجد تنبيهات، كل شيء سليم.</p>`};
 function aGo(i){closeM();const a=AL[i];if(a.g=='emp'){flt={c:'',s:'',q:'',x:a.x||''};ep=0}nv(a.g)}
 function bellM(){openM(`<h3>${ic('bell',20)} التنبيهات</h3>${alH()}<div class=row><button class='btn s' onclick=closeM()>إغلاق</button></div>`,460)}
-function nv(v){RC=null;go(v);$('side').classList.remove('show');document.body.classList.remove('sbo')}
+function nv(v){if(v!==cur){try{history.pushState({amanNav:true,page:v},'','#'+v)}catch(e){}}RC=null;go(v);$('side').classList.remove('show');document.body.classList.remove('sbo')}
+window.addEventListener('popstate',e=>{if(e.state&&e.state.amanNav&&e.state.page){go(e.state.page);$('side').classList.remove('show');document.body.classList.remove('sbo')}});
 function go(v){cur=v;if(v!='rec')RC=null;
 $('nav').innerHTML=NAV.map(g=>`<h6>${g[0]}</h6>`+g[1].map(x=>{const b=x[0]=='req'?Q().filter(q=>q.status==QS[0]).length:0;return`<button class='ni ${x[0]==v?'on':''}' onclick=nv('${x[0]}')>${ic(x[1],19)}<span class=t>${x[2]}</span>${b?`<span class=bd>${b}</span>`:''}</button>`}).join('')).join('');
 $('crumb').innerHTML=`${VT[v]}<small>${VG[v]} / ${VT[v]}</small>`;
@@ -898,7 +899,7 @@ document.addEventListener('mousedown',()=>{try{if(window.desk&&desk.refocus&&!do
 (function init(){try{const t=localStorage.getItem('ins_theme');document.documentElement.dataset.theme=t||'dark'}catch(x){}
 $('sl').innerHTML=logo(96);$('bl').innerHTML=logo(40);$('mb').innerHTML=ic('menu',19);$('gi').innerHTML=ic('search',16);
 const d=document.documentElement.dataset.theme?document.documentElement.dataset.theme=='dark':matchMedia('(prefers-color-scheme:dark)').matches;$('thb').innerHTML=ic(d?'sun':'moon',18);
-auth();setInterval(tick,30000);setTimeout(()=>$('splash').classList.add('h'),900)})();
+try{history.replaceState({amanNav:true,page:cur},'','#'+cur)}catch(x){}auth();setInterval(tick,30000);setTimeout(()=>$('splash').classList.add('h'),900)})();
 </script>
 </body>
 </html>
