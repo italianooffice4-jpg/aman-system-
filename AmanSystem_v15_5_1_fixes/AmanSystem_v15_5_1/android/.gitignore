@@ -1,0 +1,10 @@
+node_modules/
+dist/
+www/
+android/
+.env*
+*.jks
+*.keystore
+signing*.properties
+*.pfx
+*.p12
