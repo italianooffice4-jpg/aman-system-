@@ -6,6 +6,7 @@ const os = require('os');
 const { execFile } = require('child_process');
 const { Library } = require('./library');
 const { Updater } = require('./updater');
+const { DataStore } = require('./datastore');
 const SW = require('./scanwatch');
 
 const ROOT = app.getAppPath();
@@ -71,7 +72,9 @@ app.whenReady().then(async () => {
     } catch (e) { return new Response('error: ' + e.message, { status: 500 }); }
   });
   await firstRunLibrary();
+  await openDS();
   createWindow();
+  scheduleDbBackups();
   try { const wd = (readCfg().scan || {}).watchDir; if (wd) startScanWatch(wd); } catch (e) { /* لا شيء */ }
   scheduleUpdateChecks();
   app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });
@@ -115,6 +118,25 @@ ipcMain.handle('desk:printHtml', async (_e, html, opts = {}) => {
     return await new Promise((resolve) => {
       pw.webContents.print(o, (ok, reason) => resolve(ok ? { ok: true } : { ok: false, err: reason || 'failed' }));
     });
+  } catch (e) { return { ok: false, err: String(e.message || e) }; }
+  finally { try { pw.close(); } catch (e) {} setTimeout(() => { try { fs.unlinkSync(f); } catch (e) {} }, 60000); }
+});
+
+// المرحلة 6 (76): تصدير PDF مباشر بدون نافذة الطباعة. يحتاج مثبّتًا مبنيًا من هذا الإصدار؛ الواجهة تعود لنافذة الطباعة لو لم يوجد desk.pdf.
+ipcMain.handle('desk:pdf', async (_e, html, opts = {}) => {
+  const f = path.join(tmpDir(), 'pdf-' + Date.now() + '.html');
+  fs.writeFileSync(f, html, 'utf8');
+  const pw = new BrowserWindow({ show: false, webPreferences: { sandbox: true } });
+  try {
+    await pw.loadFile(f);
+    await new Promise(r => setTimeout(r, 500)); // وقت لتحميل الصور والخطوط
+    const buf = await pw.webContents.printToPDF({ printBackground: true, preferCSSPageSize: true });   // حجم الورق والهوامش من @page داخل المستند
+    const base = String(opts.filename || 'تقرير').replace(/\.pdf$/i, '').replace(/[\\/:*?"<>|]+/g, '-').slice(0, 120) || 'تقرير';
+    const r = await dialog.showSaveDialog(win, { title: 'حفظ PDF', defaultPath: path.join(app.getPath('documents'), base + '.pdf'), filters: [{ name: 'PDF', extensions: ['pdf'] }] });
+    if (r.canceled || !r.filePath) return { ok: false, cancel: true };
+    fs.writeFileSync(r.filePath, buf);
+    try { shell.showItemInFolder(r.filePath); } catch (e) {}
+    return { ok: true, path: r.filePath };
   } catch (e) { return { ok: false, err: String(e.message || e) }; }
   finally { try { pw.close(); } catch (e) {} setTimeout(() => { try { fs.unlinkSync(f); } catch (e) {} }, 60000); }
 });
@@ -263,7 +285,7 @@ ipcMain.handle('desk:scanWatchChoose', async () => {
 });
 ipcMain.handle('desk:scanWatchStop', () => { stopScanWatch(); const c = readCfg(); writeCfg({ ...c, scan: { ...(c.scan || {}), watchDir: '' } }); return { ok: true }; });
 ipcMain.handle('desk:scanWatchRead', (_e, name) => SW.readIncoming(scanWatchDir, name));
-app.on('will-quit', stopScanWatch);
+app.on('will-quit', () => { stopScanWatch(); try { if (DS) { DS.flush(); DS.close(); } } catch (e) { /* لا شيء */ } });
 
 // ---------- الذكاء الاصطناعي (OpenAI / Claude / Ollama) ----------
 ipcMain.handle('desk:ai', async (_e, o = {}) => {
@@ -358,7 +380,7 @@ ipcMain.handle('desk:libChoose', async () => {
         nl.rebuild(); copied = true;
       }
     }
-    LIB = nl; nl.rebuild();
+    LIB = nl; nl.rebuild(); await openDS();
     writeCfg({ ...readCfg(), libraryDir: nd });
     return { ok: true, dir: nd, copied };
   } catch (e) { return { err: String(e.message || e) }; }
@@ -368,7 +390,61 @@ ipcMain.handle('desk:libChoose', async () => {
 ipcMain.handle('desk:libSaveData', (_e, json) => { try { return lib().writeData(String(json)); } catch (e) { return { ok: false, err: String(e.message || e) }; } });
 ipcMain.handle('desk:libLoadData', () => lib().readData());
 ipcMain.handle('desk:libSnapshot', () => { try { return { ok: true, path: lib().snapshotNow() }; } catch (e) { return { ok: false, err: String(e.message || e) }; } });
-ipcMain.on('desk:loadDataSync', (e) => { try { e.returnValue = lib().readData(); } catch (x) { e.returnValue = null; } });
+ipcMain.on('desk:loadDataSync', (e) => {
+  let raw = null; try { raw = lib().readData(); } catch (x) { raw = null; }
+  // المرحلة 7: لو ملف النسخة مفقود أو تالف نرجع للقاعدة (SQLite) بدلًا منه
+  let ok = false; try { const o = JSON.parse(raw); ok = !!(o && o.ls && o.ls.ins_sys_v1); } catch (x) { ok = false; }
+  if (!ok && DS) { try { const S = DS.loadS(); if (S) raw = JSON.stringify({ v: 2, t: +DS.getMeta('savedAt') || Date.now(), ls: { ...DS.loadKv(), ins_sys_v1: JSON.stringify(S) }, from: 'sqlite' }); } catch (x) { /* لا شيء */ } }
+  e.returnValue = raw;
+});
+
+
+// ======================================================================
+// المرحلة 7 — قاعدة SQLite (datastore.js): نسخة دائمة موثّقة + نسخ احتياطي مجدول + تصدير/استيراد + بحث + تدقيق المستندات.
+// localStorage وملف aman-data.json يبقيان كما هما (لا يُحذف شيء)؛ فشل القاعدة لا يوقف البرنامج.
+// ======================================================================
+let DS = null, PENDING = null;
+async function openDS() {
+  try { if (DS) { try { DS.flush(); DS.close(); } catch (e) { /* لا شيء */ } DS = null; } DS = await DataStore.open(lib().meta, { log: (m) => console.log('[db] ' + m) }); if (DS) console.log('[db] engine=' + DS.engine.name); else console.warn('[db] لا يوجد محرك SQLite — يعمل البرنامج بالنسخ الاحتياطي JSON فقط'); }
+  catch (e) { console.error('[db] open failed: ' + e.message); DS = null; }
+}
+function scheduleDbBackups() {
+  const run = () => { try { if (DS && DS.backupDue()) DS.backup('تلقائي'); } catch (e) { console.error('[db] backup failed: ' + e.message); } };
+  setTimeout(run, 25000); setInterval(run, 10 * 60 * 1000);
+}
+const noDb = { ok: false, err: 'قاعدة البيانات غير متاحة في هذا التثبيت (محرك SQLite غير محمّل)' };
+const dbw = (fn) => async (_e, ...a) => { if (!DS) return noDb; try { return await fn(...a); } catch (e) { return { ok: false, err: String(e.message || e) }; } };
+ipcMain.handle('desk:dbStatus', async () => { if (!DS) return noDb; try { return { ok: true, ...DS.status(), settings: DS.settings(), backups: DS.listBackups(), libDir: lib().dir }; } catch (e) { return { ok: false, err: String(e.message || e) }; } });
+ipcMain.handle('desk:dbSave', dbw((o) => DS.saveS(String(o.main), o.kv || {})));
+ipcMain.handle('desk:dbMigrate', dbw((o) => DS.migrate(String(o.main), o.kv || {})));
+ipcMain.handle('desk:dbVerify', dbw((o) => DS.verify(String(o.main))));
+ipcMain.handle('desk:dbSearch', dbw((q, lim) => ({ ok: true, rows: DS.search(String(q || ''), { limit: lim || 50 }) })));
+ipcMain.handle('desk:dbBackupNow', dbw(() => ({ ok: true, name: DS.backup('يدوي') })));
+ipcMain.handle('desk:dbSettings', dbw((p) => ({ ok: true, settings: p ? DS.setSettings(p) : DS.settings() })));
+ipcMain.handle('desk:dbReadBackup', dbw((name) => { const r = DS.readBackup(name); if (!r.ok) return r; DS.backup('قبل-الاسترجاع'); return r; }));
+ipcMain.handle('desk:dbExport', dbw(async (o) => {
+  const zip = o.kind === 'zip', d = new Date(), n = 'aman-' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+  const r = await dialog.showSaveDialog(win, { title: 'تصدير البيانات', defaultPath: path.join(app.getPath('documents'), n + (zip ? '.zip' : '.json')), filters: [zip ? { name: 'ZIP', extensions: ['zip'] } : { name: 'JSON', extensions: ['json'] }] });
+  if (r.canceled || !r.filePath) return { ok: false, cancel: true };
+  const res = zip ? DS.exportZip(r.filePath, String(o.main), o.kv || {}, { libDir: lib().dir, withDocs: o.withDocs !== false, withUsers: !!o.withUsers }) : DS.exportJson(r.filePath, String(o.main), o.kv || {}, { withUsers: !!o.withUsers });
+  try { shell.showItemInFolder(r.filePath); } catch (e) { /* لا شيء */ }
+  return { ...res, path: r.filePath };
+}));
+ipcMain.handle('desk:dbImportPick', dbw(async () => {
+  const r = await dialog.showOpenDialog(win, { title: 'اختر ملف تصدير أمان', properties: ['openFile'], filters: [{ name: 'تصدير أمان', extensions: ['zip', 'json'] }] });
+  if (r.canceled || !r.filePaths[0]) return { ok: false, cancel: true };
+  const pkg = DS.readPackage(r.filePaths[0]); if (!pkg.ok) return pkg;
+  PENDING = { file: r.filePaths[0], pkg };
+  return { ok: true, file: r.filePaths[0], counts: pkg.counts, docs: pkg.docs, at: pkg.at, kind: pkg.kind };
+}));
+ipcMain.handle('desk:dbImportApply', dbw((o) => {
+  if (!PENDING) return { ok: false, err: 'لا يوجد ملف مختار' };
+  const { file, pkg } = PENDING; PENDING = null;
+  const bk = DS.backup('قبل-الاستيراد'); let docs = null;
+  if (o && o.docs && pkg.kind === 'zip') { docs = DS.extractDocs(file, lib().dir); lib().rebuild(); }
+  return { ok: true, main: pkg.main, kv: pkg.kv, counts: pkg.counts, docs, backup: bk };
+}));
+ipcMain.handle('desk:docsAudit', (_e, ids) => { try { return { ok: true, ...lib().audit(Array.isArray(ids) ? ids : []) }; } catch (e) { return { ok: false, err: String(e.message || e) }; } });
 
 
 // ======================================================================

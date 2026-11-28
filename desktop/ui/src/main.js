@@ -41,8 +41,14 @@ function unmount() {
 // تركيب صفحة واحدة في الوقت نفسه؛ عند أي خطأ وقت العرض يُستدعى معالج الرجوع للشكل القديم الخاص بها
 function mount(comp, el, failName) {
   unmount();
-  app = createApp(comp);
-  app.config.errorHandler = (err) => { console.error('[AmanUI]', err); if (typeof window[failName] === 'function') window[failName](); };
+  const me = app = createApp(comp);
+  // v15.6: الرجوع للشكل القديم يكون فقط لخطأ في الرسم/التركيب. خطأ داخل ضغطة زر (أو تطبيق حلّ محله غيره) لا يُسقط الصفحة كلها.
+  app.config.errorHandler = (err, inst, info) => {
+    console.error('[AmanUI]', info, err);
+    if (me !== app) return;
+    if (/event handler/i.test(String(info))) { try { toast('تعذر تنفيذ الإجراء: ' + ((err && err.message) || err)); } catch (e) { /* لا شيء */ } return; }
+    if (typeof window[failName] === 'function') window[failName]();
+  };
   app.use(PrimeVue, { theme: { preset: Plum, options: { darkModeSelector: '[data-theme="dark"]' } }, locale: ar });
   vm = app.mount(el);
 }

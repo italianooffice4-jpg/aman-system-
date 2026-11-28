@@ -75,8 +75,8 @@ watch(() => [K.value.t.act, K.value.companies, K.value.pendN, Math.round(K.value
 
 /* ---------- (23) مؤشرات قابلة للضغط ---------- */
 const openActive = () => DH.openEmps({ co: co.value, s: 'active' });
-// القالب لا يرى دوال البرنامج القديم العامة (nv) مباشرة؛ نمرّرها عبر دالة في السكربت
-const nav = (p) => nv(p);
+// القالب لا يرى دوال البرنامج القديم العامة (nv) مباشرة؛ نمرّرها عبر دالة في السكربت، وتُنفَّذ بعد انتهاء معالج الضغط
+const nav = (p) => DH.later(() => nv(p));
 const openCompanies = () => nav('comp');
 const openPend = () => DH.openReqs(co.value);
 const totalOpen = ref(false), reviewOpen = ref(false), revCat = ref('');
@@ -97,7 +97,7 @@ const quick = [
   { l: 'موظف جديد', i: 'uplus', f: () => editE() },
   { l: 'طلب دخول', i: 'clip', f: () => editQ() },
   { l: 'رفع كشف مرتبات', i: 'up', f: () => impP() },
-  { l: 'تقرير سريع', i: 'sheet', f: () => nv('fin') }
+  { l: 'تقرير سريع', i: 'sheet', f: () => nav('fin') }
 ];
 
 /* ---------- مساعد أمان (نفس منطق a9.dashAsk لكن بحالة Vue) ---------- */

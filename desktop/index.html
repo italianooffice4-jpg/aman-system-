@@ -92,7 +92,7 @@ input:focus,select:focus{outline:0;border-color:var(--pri);box-shadow:0 0 0 3px 
 .prog{height:6px;background:var(--bd);border-radius:5px;overflow:hidden}.prog i{display:block;height:100%;background:var(--pri2);transition:width .3s}
 #toast{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);left:50%;transform:translateX(-50%);background:var(--bad);color:#fff;padding:12px 20px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.3);z-index:60;display:none;max-width:92vw;font-weight:600;text-align:center}#toast.on{display:block;animation:pop .2s}#toast.ok{background:var(--ok)}
 #splash{position:fixed;inset:0;background:linear-gradient(135deg,#1e1a29,#3a2736 55%,#014d51);display:grid;place-items:center;z-index:100;transition:opacity .5s,visibility .5s;color:#fff;text-align:center}#splash.h{opacity:0;visibility:hidden}
-#splash div{animation:pulse 1.2s infinite alternate;will-change:transform}@keyframes pulse{from{transform:scale(.94)}to{transform:scale(1.04)}}
+#splash div{animation:pulse 1.2s infinite alternate;will-change:transform}#splash>div{opacity:0;animation:splin .6s .05s forwards,pulse 1.2s .65s infinite alternate}@keyframes splin{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}@keyframes pulse{from{transform:scale(.94)}to{transform:scale(1.04)}}
 .ph{display:none}
 #login{position:fixed;inset:0;z-index:80;display:none;place-items:center;background:var(--bg);overflow:auto;padding:16px}body.lo #login{display:grid}body.lo .app{display:none}
 .lbox{display:grid;grid-template-columns:1fr 1fr;width:min(900px,100%);background:var(--card);border-radius:22px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.25);animation:pop .3s}
@@ -772,7 +772,9 @@ else if(k=='log'){const z=new Map();[...(rem.log||[]),...(loc.log||[])].forEach(
 else{const b=js(base?base[k]:undefined),l=js(loc[k]);out[k]=l===b&&k in rem?rem[k]:(k in loc?loc[k]:rem[k])}});return out}
 function applyData(d){cs.apply=1;try{const keep={};['emps','cars'].forEach(k=>{keep[k]=new Map((S[k]||[]).map(x=>[x.id,x.docs||[]]))});
 Object.keys(d).forEach(k=>{S[k]=d[k]});['emps','cars'].forEach(k=>(S[k]||[]).forEach(x=>{x.docs=keep[k].get(x.id)||x.docs||[]}));
-S.reqs=S.reqs||[];S.pay=S.pay||[];S.log=S.log||[];S.tasks=S.tasks||[];S.cars=S.cars||[];save()}finally{cs.apply=0}}
+S.reqs=S.reqs||[];S.pay=S.pay||[];S.log=S.log||[];S.tasks=S.tasks||[];S.cars=S.cars||[];
+/* v17: السجلات المستلمة من السحابة لا تُعتبر «معدَّلة محليًا»: نحدّث بصمات stamp() بعد استعادة docs، وإلا ارتفع _u محليًا بلا تعديل فتبدو نسخة هذا الجهاز أحدث وتطغى على تعديل جهاز آخر لاحقًا */
+['emps','reqs','cars','companies','tasks'].forEach(k=>(S[k]||[]).forEach(x=>{HS[k+x.id]=JSON.stringify({...x,_u:0})}));save()}finally{cs.apply=0}}
 const cbase=c=>c.url.replace(/\/+$/,'');
 async function authCall(c,path,body){const r=await fetch(cbase(c)+'/auth/v1/'+path,{method:'POST',headers:{apikey:c.key,'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.msg||j.error_description||j.message||('HTTP '+r.status));return j}
 function setSess(c,j){c.at=j.access_token;c.rt=j.refresh_token||c.rt;c.exp=Math.floor(Date.now()/1000)+(j.expires_in||3600);if(j.user){c.uid=j.user.id;c.email=j.user.email||c.email}}
@@ -783,14 +785,14 @@ async function cpush(c,data,rev){const rep={Prefer:'return=representation'};let 
 if(rev)res=await rest(c,'PATCH','?user_id=eq.'+c.uid+'&updated_at=eq.'+encodeURIComponent(rev),{data},rep);else res=await rest(c,'POST','',{user_id:c.uid,data},rep);
 if(!res.length)return false;c.rev=res[0].updated_at;c.at2=Date.now();CL.set(c);await putBase(data);return true}
 async function cloudSync(manual,depth){const c=CL.get();if(!c||!c.at||cs.busy)return;cs.busy=1;cs.msg='جارٍ المزامنة…';cloudUI();
-try{await ensureTok(c);const row=(await rest(c,'GET','?select=data,updated_at&user_id=eq.'+c.uid))[0],loc=clean(S),base=await getBase();let did='';
+try{await ensureTok(c);const row=(await rest(c,'GET','?select=data,updated_at&user_id=eq.'+c.uid))[0],base=await getBase(),loc=clean(S);let did='';
 if(!row){await cpush(c,loc,null);did='تم رفع بياناتك لأول مرة'}
 else if(c.rev===row.updated_at){if(js(loc)!==js(base)){if(!(await cpush(c,loc,row.updated_at))){cs.busy=0;return (depth||0)<2?cloudSync(manual,(depth||0)+1):0}did='تم رفع تعديلاتك'}else did='لا توجد تغييرات'}
 else{const merged=mergeData(base,loc,row.data);applyData(merged);if(!(await cpush(c,clean(S),row.updated_at))){cs.busy=0;return (depth||0)<2?cloudSync(manual,(depth||0)+1):0}did='تم دمج تغييرات الأجهزة الأخرى';if(!document.querySelector('#modal.on'))go(cur)}
 cs.msg=did;cs.t=Date.now();if(manual)toast(did,1)}
 catch(e){cs.msg='تعذرت المزامنة: '+e.message;if(manual)toast(cs.msg)}
-cs.busy=0;cloudUI()}
-function cloudDirty(){if(cs.apply)return;const c=CL.get();if(!c||!c.at)return;clearTimeout(cs.tm);cs.tm=setTimeout(()=>cloudSync(),2500)}
+cs.busy=0;cloudUI();if(cs.again){cs.again=0;clearTimeout(cs.tm);cs.tm=setTimeout(()=>cloudSync(),800)}}
+function cloudDirty(){if(cs.apply)return;const c=CL.get();if(!c||!c.at)return;clearTimeout(cs.tm);cs.tm=setTimeout(()=>{if(cs.busy)cs.again=1;else cloudSync()},2500)}
 function cloudUI(){const e=$('cl_stat');if(e)e.innerHTML=cloudStat()}
 function cloudStat(){const c=CL.get();if(!c||!c.at)return `<span class='tag i'>غير متصل</span>`;return `<span class='tag a'>متصل: ${esc(c.email||'')}</span> <span class=mut>${esc(cs.msg||'')}${cs.t?' — '+new Date(cs.t).toLocaleTimeString('ar-EG'):''}</span>`}
 async function cloudConnect(kind){const c0={url:$('cl_url').value.trim(),key:$('cl_key').value.trim()},em=$('cl_em').value.trim(),pw=$('cl_pw').value;
@@ -895,15 +897,25 @@ document.addEventListener('mousedown',()=>{try{if(window.desk&&desk.refocus&&!do
 <script src="src/merge/aman-v10.js"></script>
 <script src="src/merge/aman-v12-library.js"></script>
 <script src="src/merge/aman-v15-forms.js"></script>
+<link rel="stylesheet" href="src/merge/aman-v15-reports.css">
+<link rel="stylesheet" href="src/merge/aman-v15-data.css">
 <link rel="stylesheet" href="src/ui/aman-ui.css">
+<link rel="stylesheet" href="src/merge/aman-v16-fx.css">
+<link rel="stylesheet" href="src/merge/aman-v17-lock.css">
+<script>try{if(sessionStorage.getItem("ins_locked")==="1")document.documentElement.setAttribute("data-locked","1")}catch(e){}</script>
 <script src="src/ui/aman-ui.js"></script>
 <script src="src/merge/aman-v13-ui.js"></script>
+<script src="src/merge/aman-v16-fx.js"></script>
+<script src="src/merge/aman-v15-reports.js"></script>
+<script src="src/merge/aman-v15-data.js"></script>
 <script src="src/merge/aman-update.js"></script>
+<script src="src/merge/aman-v17-lock.js"></script>
 <script>
 (function init(){try{const t=localStorage.getItem('ins_theme');document.documentElement.dataset.theme=t||'dark'}catch(x){}
 $('sl').innerHTML=logo(96);$('bl').innerHTML=logo(40);$('mb').innerHTML=ic('menu',19);$('gi').innerHTML=ic('search',16);
 const d=document.documentElement.dataset.theme?document.documentElement.dataset.theme=='dark':matchMedia('(prefers-color-scheme:dark)').matches;$('thb').innerHTML=ic(d?'sun':'moon',18);
-auth();setInterval(tick,30000);setTimeout(()=>$('splash').classList.add('h'),350)})();
+auth();setInterval(tick,30000);/* v15.6: شاشة الإقلاع تبقى ظاهرة ٢٫٢ ثانية على الأقل من بداية التحميل (كانت تختفي بعد ٣٥٠ مللي ثانية فلا يُرى الشعار) */
+const SPL_MIN=2200,spl=$('splash'),splHide=()=>{spl.classList.add('h');setTimeout(()=>{try{spl.remove()}catch(x){}},900)};setTimeout(splHide,Math.max(400,SPL_MIN-Math.round(performance.now())))})();
 </script>
 </body>
 </html>

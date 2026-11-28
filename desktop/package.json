@@ -1,7 +1,7 @@
 {
   "name": "aman-system",
   "productName": "Aman System",
-  "version": "15.5.1",
+  "version": "15.9.0",
   "description": "نظام إدارة التأمينات — نسخة سطح المكتب",
   "main": "main.js",
   "private": true,
@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "chart.js": "^4.6.2",
+    "sql.js": "^1.12.0",
     "tesseract.js": "5.1.1",
     "tesseract.js-core": "5.1.0",
     "xlsx": "0.18.5"
@@ -38,6 +39,8 @@
       "main.js",
       "preload.js",
       "library.js",
+      "datastore.js",
+      "zip.js",
       "updater.js",
       "scanwatch.js",
       "index.html",
@@ -46,7 +49,9 @@
       "*.png",
       "src/**/*",
       "scripts/scan.ps1",
-      "node_modules/xlsx/dist/**/*"
+      "node_modules/xlsx/dist/**/*",
+      "node_modules/sql.js/dist/**/*",
+      "node_modules/sql.js/package.json"
     ],
     "win": {
       "icon": "icon-512.png",
@@ -61,5 +66,5 @@
       "perMachine": false
     }
   },
-  "amanShellApi": 3
+  "amanShellApi": 4
 }

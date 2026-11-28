@@ -1,6 +1,7 @@
 // مكتبة مستندات الموظفين على القرص + نسخة احتياطية للبيانات. وحدة Node خالصة (قابلة للاختبار بدون Electron).
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const MIMES = { '.pdf': 'application/pdf', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '.xls': 'application/vnd.ms-excel', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '.txt': 'text/plain' };
 const EXT = { 'application/pdf': '.pdf', 'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp' };
@@ -66,7 +67,7 @@ class Library {
     const file = path.join(folder, `${base} [${id}]${ext}`);
     this._atomic(file, buf);
     if (fs.statSync(file).size !== buf.length) return { ok: false, err: 'فشل التحقق من الحجم بعد الكتابة' };
-    this._load()[id] = { p: path.relative(this.dir, file), name: (name || base + ext), type: type || MIMES[ext] || 'application/octet-stream' };
+    this._load()[id] = { p: path.relative(this.dir, file), name: (name || base + ext), type: type || MIMES[ext] || 'application/octet-stream', h: crypto.createHash('sha256').update(buf).digest('hex') };   // المرحلة 7: بصمة للتدقيق
     this._saveIdx();
     return { ok: true, path: file };
   }
@@ -93,6 +94,19 @@ class Library {
     delete this.idx[id];
     this._saveIdx();
     return { ok: true };
+  }
+
+  // المرحلة 7 (8): تدقيق المكتبة — ملفات مفقودة، ملفات تغيّر محتواها (لمن لها بصمة)، ومستندات يتيمة لا يشير إليها أي موظف.
+  // refIds = معرّفات المستندات المشار إليها من بيانات الموظفين. قراءة فقط: لا يحذف ولا يعدّل شيئًا.
+  audit(refIds) {
+    const idx = this._load(), ref = new Set((refIds || []).map(String)), missing = [], badHash = [], orphans = []; let checked = 0;
+    for (const id of Object.keys(idx)) {
+      const e = idx[id], file = path.join(this.dir, e.p); checked++;
+      if (!fs.existsSync(file)) { missing.push({ id, p: e.p }); continue; }
+      if (e.h) { try { if (crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex') !== e.h) badHash.push({ id, p: e.p }); } catch (x) { missing.push({ id, p: e.p }); } }
+      if (!ref.has(String(id))) orphans.push({ id, p: e.p, name: e.name });
+    }
+    return { ok: !missing.length && !badHash.length, checked, missing, badHash, orphans };
   }
 
   stats() {

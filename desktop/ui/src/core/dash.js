@@ -187,10 +187,22 @@ export const hasSummary = () => { try { return !summary().empty; } catch (e) { r
 
 /* ---------------- تنقّل ---------------- */
 // نفس طريقة aGo() القديمة: تضبط مرشحات صفحة الموظفين ثم تنتقل
+// v15.6: التنقل يُنفَّذ بعد انتهاء معالج الضغط (setTimeout 0) حتى لا يُفكّ تطبيق Vue ولا يُستبدل DOM الخاص به أثناء تنفيذه،
+// وأي خطأ في الانتقال لا يصل لمعالج أخطاء اللوحة (الذي كان يعيد الشكل القديم ويلغي الضغطة).
+export function later(fn) {
+  setTimeout(() => { try { fn(); } catch (e) { console.error('[AmanUI]', e); try { toast('تعذر فتح الصفحة المطلوبة'); } catch (x) { /* لا شيء */ } } }, 0);
+}
 export function openEmps({ co = '', s = '', x = '' } = {}) {
   if (x && !XF2[x]) x = '';
-  flt = { c: validCo(co), s, q: '', x, fn: '', k: '' }; ep = 0;
-  nv('emp');
+  later(() => { flt = { c: validCo(co), s, q: '', x, fn: '', k: '' }; ep = 0; nv('emp'); });
 }
-export function openReqs(co) { qf = { c: validCo(co) ? cn(co) : '', q: '' }; nv('req'); }
-export function openAlert(a, co) { openAlertTarget(a, co); }   // المرحلة 4 (59): يفتح السجل المطلوب نفسه
+export function openReqs(co) { later(() => { qf = { c: validCo(co) ? cn(co) : '', q: '' }; nv('req'); }); }
+export function openAlert(a, co) {   // المرحلة 4 (59): يفتح السجل المطلوب نفسه؛ ولو فشل الانتقال الغني نذهب للصفحة مباشرة
+  later(() => {
+    try { openAlertTarget(a, co); } catch (e) {
+      console.error('[AmanUI] openAlert', e);
+      if (a && a.g === 'emp') { flt = { c: '', s: '', q: '', x: '', fn: '', k: '' }; ep = 0; }
+      nv((a && a.g) || 'dash');
+    }
+  });
+}   // المرحلة 4 (59): يفتح السجل المطلوب نفسه
