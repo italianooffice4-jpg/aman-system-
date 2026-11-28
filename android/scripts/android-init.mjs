@@ -10,7 +10,7 @@ if (!m.includes('android.permission.CAMERA')) {
   m = m.replace('</manifest>', '    <uses-permission android:name="android.permission.CAMERA" />\n</manifest>');
   writeFileSync(mf, m);
 }
-try { run('npx capacitor-assets generate --android --iconBackgroundColor "#12101a" --iconBackgroundColorDark "#12101a"'); }
-catch (e) { console.warn('تخطي توليد الأيقونة (غير حرج)'); }
+try { run('npx capacitor-assets generate --android --iconBackgroundColor "#061021" --iconBackgroundColorDark "#061021"'); }
+catch (e) { console.warn('تخطي توليد الأيقونة (غير حرج): ' + (e && e.message || e)); }
 run('npx cap sync android');
 console.log('\nتم. افتح مجلد android في Android Studio أو شغّل: cd android && gradlew assembleDebug');
