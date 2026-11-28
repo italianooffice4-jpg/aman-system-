@@ -1,0 +1,41 @@
+# ينشر إصدارًا جديدًا (تحديث للبرنامج) تلقائيًا عند دفع وسم يبدأ بـ v، مثل v15.3.0
+# يبني واجهة Vue على خوادم GitHub — فلا حاجة لبنائها على جهازك أبدًا.
+# يفترض أن جذر المستودع هو المجلد الذي بداخله desktop. لو رفعت محتوى desktop مباشرة في الجذر غيّر APP_DIR إلى .
+name: release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+env:
+  APP_DIR: desktop
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ env.APP_DIR }}/package-lock.json
+      - name: Install
+        working-directory: ${{ env.APP_DIR }}
+        run: npm ci
+      - name: Build UI
+        working-directory: ${{ env.APP_DIR }}
+        run: npm run ui:build
+      - name: Tests (updater)
+        working-directory: ${{ env.APP_DIR }}
+        run: node tests/update/updater.test.mjs
+      - name: Package release
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          NOTES="../RELEASES/${GITHUB_REF_NAME}.md"
+          [ -f "$NOTES" ] || { echo "ملف ملاحظات الإصدار مفقود: RELEASES/${GITHUB_REF_NAME}.md"; exit 1; }
+          node scripts/make-release.mjs --version "$VER" --notes "$NOTES" --out ../release-out
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" release-out/* --title "$GITHUB_REF_NAME" --notes-file "RELEASES/${GITHUB_REF_NAME}.md"

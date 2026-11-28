@@ -1,0 +1,12 @@
+/* v15.7 — المرحلة 7: صفحة البيانات والنسخ */
+.dx-c{margin-bottom:14px}.dx-c h3{margin:0 0 10px}.dx label{display:block;margin:10px 0 4px;font-size:12px;opacity:.85}
+.dx .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.dx-k{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 10px}.dx-k>div{flex:1;min-width:150px;border:1px solid var(--bd,#ddd);border-radius:10px;padding:10px 12px}.dx-k b{display:block;font-size:14px;color:#714b67}.dx-k span{font-size:12px;opacity:.8}
+.dx-w{background:rgba(245,158,11,.14);border:1px solid #f59e0b;border-radius:8px;padding:8px 12px;font-size:12.5px;margin:8px 0}
+.dx-ok{background:rgba(1,126,132,.12);border:1px solid #017e84;border-radius:8px;padding:8px 12px;font-size:12.5px;margin:8px 0}
+.dx-t{border-collapse:collapse;width:100%;font-size:12px;margin-top:8px}.dx-t th,.dx-t td{border:1px solid var(--bd,#ddd);padding:4px 8px;text-align:right}.dx-t td.n{direction:ltr;text-align:left}.dx-t tr.bad td{background:rgba(220,38,38,.12)}
+.dx-d{margin-top:8px}.dx-d summary{cursor:pointer}.dx-d ul{margin:6px 0;padding-inline-start:20px;font-size:12px}
+.dx-r{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:end}
+.dx-ck{display:flex!important;gap:8px;align-items:center;cursor:pointer}.dx-ck input{width:auto}
+.dx-l{display:flex;flex-direction:column;max-height:380px;overflow:auto;margin-top:8px}.dx-it{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--bd,#ddd)}
+#dx-q{width:100%}

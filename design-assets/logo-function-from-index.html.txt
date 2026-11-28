@@ -1,0 +1,4 @@
+/* مستخرج حرفيًا من index.html */
+LOGO='new-logo-mark-transparent.png';
+const logo=s=>`<span class=lt style='width:${s}px;height:${s}px'><img src='${LOGO}' alt='Aman System'></span>`;
+/* الشعار الفعلي = ملف new-logo-mark-transparent.png (موجود في هذا المجلد وفي desktop/ و android/) */

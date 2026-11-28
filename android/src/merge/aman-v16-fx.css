@@ -1,0 +1,246 @@
+/* ==========================================================================
+   Aman v16 — تأثيرات الواجهة (تسجيل الدخول المتحرك • شريط الإجراءات السريعة
+   • زر الرفع • زر الحذف). ملف مستقل لا يعتمد على بناء Vue.
+   لتغيير ألوان زر الحذف عدّل المتغيرات --fxd-* في الأسفل فقط.
+   ========================================================================== */
+
+@property --acc { syntax: '<color>'; inherits: true; initial-value: #6ee7ff; }
+
+:root {
+  --fxd-bg1: #a21caf; --fxd-bg2: #6b21a8; --fxd-fg: #fff;      /* زر الحذف (البنفسجي) */
+  --fxu-bg1: #5b3be8; --fxu-bg2: #4a2bd0; --fxu-seg: rgba(255,255,255,.16); --fxu-ok: #34d399; /* زر الرفع */
+}
+
+/* ===================================================================
+   1) تسجيل الدخول — بطاقة بحدّ مضيء ولوح قطري يتبدّل بين الدخول والتسجيل
+   =================================================================== */
+#login:has(.lbox.fx) { background: radial-gradient(circle at 50% 28%, #0c2236 0%, #050a14 62%, #02040a 100%); }
+
+#login .lbox.fx {
+  --cp: polygon(48% 0, 100% 0, 100% 100%, 70% 100%);
+  --dx: -46px;
+  position: relative; display: block; width: min(880px, 100%); height: 520px;
+  background: #070c18; border-radius: 16px; overflow: hidden; direction: ltr;
+  border: 2px solid #22d3ee; animation: none;
+  box-shadow: 0 0 0 1px rgba(34,211,238,.25), 0 0 34px rgba(34,211,238,.42), 0 0 90px rgba(34,211,238,.16), inset 0 0 40px rgba(34,211,238,.08);
+}
+#login .lbox.fx[data-mode="reg"] { --cp: polygon(0 0, 52% 0, 30% 100%, 0 100%); --dx: 46px; }
+#login .lbox.fx.fx-out, #login .lbox.fx.fx-cover { --cp: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+
+/* اللوح القطري */
+#login .lbox.fx .lside {
+  position: absolute; inset: 0; z-index: 1; padding: 0; display: block; gap: 0;
+  background: linear-gradient(135deg, #0b5c70 0%, #0e8aa3 45%, #22d3ee 100%);
+  clip-path: var(--cp); -webkit-clip-path: var(--cp);
+  transition: clip-path .62s cubic-bezier(.77,0,.18,1), -webkit-clip-path .62s cubic-bezier(.77,0,.18,1);
+}
+#login .lbox.fx .lside::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 80% 15%, rgba(255,255,255,.22), transparent 55%); pointer-events: none; }
+#login .fxw {
+  position: absolute; top: 50%; right: 5%; width: 33%; transform: translateY(-50%);
+  text-align: center; color: #fff; direction: rtl; transition: opacity .3s;
+}
+#login .lbox.fx[data-mode="reg"] .fxw { right: auto; left: 3%; }
+#login .fxw .lt { margin: 0 auto 10px; display: block; filter: drop-shadow(0 4px 14px rgba(0,0,0,.35)); }
+#login .fxw h2 { margin: 0; font-size: clamp(22px, 3vw, 32px); font-weight: 800; line-height: 1.25; letter-spacing: .2px; text-shadow: 0 3px 18px rgba(0,0,0,.35); color: #fff; }
+#login .fxw p { margin: 10px 0 0; font-size: 13.5px; opacity: .92; color: #eafcff; }
+#login .lbox.fx.fx-out .fxw, #login .lbox.fx.fx-cover .fxw { opacity: 0; }
+
+/* الفورم */
+#login .lbox.fx .lform {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 50%; z-index: 2; padding: 30px 46px;
+  display: flex; flex-direction: column; justify-content: center; direction: rtl; overflow: auto;
+}
+#login .lbox.fx[data-mode="reg"] .lform { left: auto; right: 0; }
+#login .lbox.fx .lform h2 { color: #fff; font-size: 28px; font-weight: 800; text-align: center; margin: 0 0 4px !important; }
+#login .lbox.fx .lform .mut { color: #8ea3b8; text-align: center; font-size: 12.5px; margin: 0 0 14px; }
+#login .lbox.fx .lform a { color: #22d3ee; font-weight: 700; }
+#login .lbox.fx .lform > label { color: #9fb2c6; font-size: 12.5px; margin: 10px 0 0; }
+#login .lbox.fx .lform > label input[type=checkbox] { accent-color: #22d3ee; }
+
+.fxf { position: relative; margin: 14px 0 4px; }
+.fxf input {
+  width: 100%; box-sizing: border-box; background: transparent !important; border: 0 !important; border-bottom: 2px solid #2b3b50 !important;
+  border-radius: 0 !important; color: #f1f5f9 !important; font: inherit; font-size: 15px; padding: 14px 34px 6px 4px !important;
+  outline: none; box-shadow: none !important; transition: border-color .25s;
+}
+.fxf input:focus { border-bottom-color: #22d3ee !important; }
+.fxf label {
+  position: absolute; inset-inline-start: 0; top: 14px; margin: 0 !important; color: #8ea3b8 !important; font-size: 14px !important;
+  pointer-events: none; transition: transform .22s, color .22s, font-size .22s; transform-origin: right top; display: block;
+}
+.fxf input:focus ~ label, .fxf input:not(:placeholder-shown) ~ label { transform: translateY(-15px); font-size: 11.5px !important; color: #22d3ee !important; }
+.fxf .fxi { position: absolute; inset-inline-end: 2px; bottom: 8px; color: #6b8197; transition: color .25s; display: grid; }
+.fxf input:focus ~ .fxi { color: #22d3ee; }
+
+#login .lbox.fx .le { color: #fb7185; min-height: 20px; text-align: center; }
+#login .lbox.fx #lb {
+  width: 100%; height: 46px; margin-top: 8px; border-radius: 999px; border: 2px solid #22d3ee; color: #fff; font-weight: 800; font-size: 15px;
+  background: linear-gradient(90deg, #0e7490, #22d3ee); box-shadow: 0 0 22px rgba(34,211,238,.45), inset 0 1px 0 rgba(255,255,255,.35);
+  transition: transform .18s, box-shadow .18s, filter .18s;
+}
+#login .lbox.fx #lb:hover { transform: translateY(-2px); box-shadow: 0 0 32px rgba(34,211,238,.7), inset 0 1px 0 rgba(255,255,255,.4); filter: brightness(1.08); }
+#login .lbox.fx #lb:active { transform: translateY(0) scale(.98); }
+#login .lbox.fx .lform > p.mut:last-child { text-align: center; margin-top: 14px; }
+
+/* حركات العناصر */
+@keyframes fx-item-in  { from { opacity: 0; transform: translateX(var(--dx)); filter: blur(5px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes fx-item-out { from { opacity: 1; transform: none; filter: none; } to { opacity: 0; transform: translateX(var(--dx)); filter: blur(5px); } }
+#login .lbox.fx.fx-cover .lform > * { opacity: 0; }
+#login .lbox.fx.fx-in .lform > *  { animation: fx-item-in .55s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 70ms + 260ms); }
+#login .lbox.fx.fx-out .lform > * { animation: fx-item-out .34s ease-in both; animation-delay: calc(var(--i, 0) * 30ms); }
+#login .lbox.fx.fx-first .lside { animation: fx-pop .8s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes fx-pop { from { clip-path: polygon(100% 0, 100% 0, 100% 100%, 100% 100%); } }
+
+@media (max-width: 760px) {
+  #login .lbox.fx { height: auto; display: flex; flex-direction: column; }
+  #login .lbox.fx .lside { position: relative; inset: auto; height: 130px; clip-path: none; -webkit-clip-path: none; }
+  #login .fxw, #login .lbox.fx[data-mode="reg"] .fxw { position: static; transform: none; width: auto; padding: 14px; }
+  #login .fxw .lt, #login .fxw p { display: none; }
+  #login .lbox.fx .lform, #login .lbox.fx[data-mode="reg"] .lform { position: static; width: auto; padding: 24px 26px; }
+}
+
+/* ===================================================================
+   2) شريط الإجراءات السريعة (Dock) في الشاشة الرئيسية
+   =================================================================== */
+[data-fxd="1"] { display: none !important; }
+.fxdock-wrap { margin: 16px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.fxdock {
+  --D: 46px; position: relative; display: flex; width: min(600px, 100%); height: 86px; box-sizing: border-box; padding: 0 6px;
+  direction: rtl; border-radius: 24px; user-select: none; -webkit-user-select: none; touch-action: none;
+  background: linear-gradient(180deg, rgba(40,44,62,.82), rgba(18,20,32,.92));
+  border: 1px solid rgba(255,255,255,.09);
+  box-shadow: 0 18px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.08), inset 0 -1px 0 rgba(0,0,0,.4);
+}
+:root[data-theme="light"] .fxdock {
+  background: linear-gradient(180deg, #ffffff, #eef1f8); border-color: #dbe0ee;
+  box-shadow: 0 14px 30px rgba(30,40,80,.14), inset 0 1px 0 #fff;
+}
+.fxd-it {
+  position: relative; z-index: 2; flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  gap: 5px; padding: 0; border: 0; background: none; cursor: pointer; font: inherit; color: #9aa3b8; -webkit-tap-highlight-color: transparent;
+  transition: color .3s;
+}
+:root[data-theme="light"] .fxd-it { color: #64708a; }
+.fxd-it .fxd-ic { width: var(--D); height: var(--D); margin-top: 9px; display: grid; place-items: center; transition: transform .25s, color .3s, filter .3s; }
+.fxd-it .fxd-ic svg { width: 22px; height: 22px; }
+.fxd-it .fxd-lb { font-size: clamp(10px, 2.9vw, 12.5px); font-weight: 600; white-space: nowrap; letter-spacing: .1px; transition: color .3s; }
+.fxd-it:hover .fxd-ic { transform: translateY(-2px); }
+.fxd-it:focus-visible { outline: 2px solid var(--acc); outline-offset: -4px; border-radius: 18px; }
+.fxd-it.on { color: var(--acc); }
+.fxd-it.on .fxd-ic { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--acc) 70%, transparent)); }
+.fxd-it.on .fxd-lb { color: var(--acc); }
+
+.fxd-light { position: absolute; z-index: 3; top: 9px; left: 0; height: var(--D); width: var(--D); cursor: grab; touch-action: none; }
+.fxd-light.drag { cursor: grabbing; }
+.fxd-ring {
+  position: absolute; inset: 0; box-sizing: border-box; border-radius: 999px; border: 2px solid var(--acc);
+  transition: --acc .35s, opacity .2s;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--acc) 55%, transparent), inset 0 0 12px color-mix(in srgb, var(--acc) 35%, transparent);
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--acc) 14%, transparent), transparent 70%);
+}
+.fxd-line {
+  position: absolute; z-index: 1; bottom: -1px; height: 2px; border-radius: 2px; pointer-events: none; opacity: .9;
+  background: linear-gradient(90deg, transparent, var(--acc), transparent); filter: blur(.4px); transition: --acc .35s;
+}
+.fxd-refl {
+  position: absolute; z-index: 0; top: calc(100% + 8px); height: var(--D); box-sizing: border-box; border-radius: 999px; border: 2px solid var(--acc);
+  opacity: .22; filter: blur(1.4px); pointer-events: none; transition: --acc .35s;
+  -webkit-mask-image: linear-gradient(to bottom, #000, transparent 75%); mask-image: linear-gradient(to bottom, #000, transparent 75%);
+}
+.fxd-hint { margin: 26px 0 0; font-size: 12px; color: var(--mut, #8b93a7); text-align: center; }
+.fxd-hint b { color: var(--tx, #e5e7ef); border-bottom: 1px dashed currentColor; font-weight: 600; }
+.fxdock { --acc: #6ee7ff; }
+
+/* ===================================================================
+   3) زر الرفع — شريحتان (نص + سهم) وتعبئة سائلة ثم علامة صح
+   =================================================================== */
+.fx-up {
+  position: relative; display: inline-flex !important; align-items: stretch; gap: 0 !important; padding: 0 0 0 0 !important; padding-inline-start: 16px !important;
+  min-height: 38px; overflow: visible !important; border: 0 !important; border-radius: 12px !important; color: #fff !important; font-weight: 700;
+  background: linear-gradient(180deg, var(--fxu-bg1), var(--fxu-bg2)) !important; box-shadow: 0 6px 16px rgba(91,59,232,.32), inset 0 1px 0 rgba(255,255,255,.22) !important;
+  transition: transform .18s, box-shadow .18s, filter .18s; cursor: pointer; line-height: 38px;
+}
+.fx-up:hover { transform: translateY(-1px); filter: brightness(1.07); box-shadow: 0 9px 20px rgba(91,59,232,.42), inset 0 1px 0 rgba(255,255,255,.25) !important; }
+.fx-up:active { transform: translateY(0) scale(.98); }
+.fx-up > .fxu-icon {
+  order: 2; align-self: stretch; box-sizing: border-box; width: 44px; margin-inline-start: 14px; display: grid; place-items: center;
+  background: var(--fxu-seg); border-start-end-radius: 11px; border-end-end-radius: 11px; transition: transform .25s;
+}
+.fx-up > svg.fxu-icon { padding: 10px 13px; }
+.fx-up > .fxu-icon svg, .fx-up > svg.fxu-icon { width: 17px; height: 17px; }
+.fx-up > svg.fxu-icon { width: 44px; height: auto; padding: 10px 13.5px; box-sizing: border-box; }
+.fx-up:hover > .fxu-icon { animation: fxu-bob .7s ease-in-out infinite; }
+@keyframes fxu-bob { 50% { transform: translateY(-3px); } }
+.fx-up.sm, .fx-up.btn.sm { min-height: 32px; line-height: 32px; font-size: 12.5px; }
+.fx-up.sm > svg.fxu-icon { padding: 7px 13px; }
+
+.fxu { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .2s; border-radius: inherit; overflow: hidden; }
+.fx-up.run .fxu, .fx-up.done .fxu { opacity: 1; }
+.fx-up.run, .fx-up.done { color: transparent !important; }
+.fx-up.run > .fxu-icon, .fx-up.done > .fxu-icon { opacity: 0; }
+.fxu-lb { position: absolute; inset-block: 0; inset-inline-start: 0; inset-inline-end: 44px; display: grid; place-items: center; color: #fff; font-weight: 800; }
+.fxu-lb .t { grid-area: 1/1; transition: opacity .25s, transform .3s; white-space: nowrap; }
+.fxu-lb .t-ok { opacity: 0; transform: translateY(8px); }
+.fx-up.done .fxu-lb .t-up { opacity: 0; transform: translateY(-8px); }
+.fx-up.done .fxu-lb .t-ok { opacity: 1; transform: none; }
+.fxu-seg { position: absolute; inset-block: 0; inset-inline-end: 0; width: 44px; background: rgba(0,0,0,.28); overflow: hidden; transition: background .3s; }
+.fxu-liq { position: absolute; left: -10%; right: -10%; bottom: 0; height: calc(var(--p, 0) * 100%); background: #fff; border-radius: 0; transition: height .1s linear; }
+.fxu-liq::before { content: ''; position: absolute; left: 0; right: 0; top: -7px; height: 14px; background: #fff; border-radius: 45% 55% 50% 50% / 60% 60% 40% 40%; animation: fxu-wave 1s linear infinite; }
+@keyframes fxu-wave { from { transform: translateX(-10%) scaleY(1); } 50% { transform: translateX(0) scaleY(.7); } to { transform: translateX(10%) scaleY(1); } }
+.fx-up.done .fxu-seg { background: var(--fxu-ok); }
+.fx-up.done .fxu-liq { opacity: 0; }
+.fxu-ck { position: absolute; inset: 0; margin: auto; width: 20px; height: 20px; stroke: #04251a; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 26; stroke-dashoffset: 26; }
+.fx-up.done .fxu-ck { animation: fxu-draw .38s .08s ease-out forwards; }
+@keyframes fxu-draw { to { stroke-dashoffset: 0; } }
+.fxu-sub { position: absolute; top: calc(100% + 4px); left: 0; right: 0; text-align: center; font-size: 10.5px; line-height: 1.2; color: var(--mut, #8b93a7); white-space: nowrap; font-weight: 600; opacity: 0; transition: opacity .25s; pointer-events: none; direction: ltr; unicode-bidi: isolate; }
+.fx-up.run .fxu-sub, .fx-up.done .fxu-sub { opacity: 1; }
+
+/* حقول الملفات داخل النوافذ المنبثقة */
+.fxu-wrap { flex: 1; min-width: 200px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.fxu-wrap .fx-up { margin-bottom: 0; }
+.fxu-names { color: var(--mut, #8b93a7); font-size: 12px; flex: 1; min-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fxu-hid { flex: none !important; position: absolute !important; opacity: 0 !important; width: 1px !important; height: 1px !important; min-width: 0 !important; pointer-events: none !important; }
+
+/* ===================================================================
+   4) زر الحذف — سلة بغطاء يطير وشظايا ثم دائرة بحلقة تقدّم
+   =================================================================== */
+.fx-del {
+  position: relative; overflow: visible !important; border: 0 !important; color: var(--fxd-fg) !important;
+  background: linear-gradient(180deg, var(--fxd-bg1), var(--fxd-bg2)) !important;
+  box-shadow: 0 6px 16px rgba(162,28,175,.32), inset 0 1px 0 rgba(255,255,255,.25) !important;
+  border-radius: 999px !important; transition: transform .18s, box-shadow .18s, filter .18s, width .4s cubic-bezier(.7,0,.2,1), padding .4s;
+}
+.fx-del:not(.ibt):not(.p-button-icon-only) { padding-inline: 16px !important; }
+.fx-del:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 9px 20px rgba(162,28,175,.45), inset 0 1px 0 rgba(255,255,255,.28) !important; }
+.fx-del:active { transform: scale(.96); }
+.fx-del.ibt { width: 30px; height: 30px; padding: 0 !important; }
+.fx-del > svg, .fx-del > span:not(.fxdl) { transition: opacity .22s, transform .3s; }
+.fxdl { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+.fxdl-can { position: absolute; inset: 0; margin: auto; width: 18px; height: 18px; overflow: visible; fill: none; stroke: #fff; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.fxdl-lid { transform-box: fill-box; transform-origin: 85% 100%; transition: transform .3s cubic-bezier(.3,1.6,.5,1); }
+.fxdl-p { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: #fff; opacity: 0; }
+.fxdl-ring { position: absolute; inset: -5px; width: calc(100% + 10px); height: calc(100% + 10px); opacity: 0; transform: rotate(-90deg); }
+.fxdl-ring circle { fill: none; stroke: #fff; stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; }
+
+.fx-del.fxdl-run .fxdl { opacity: 1; }
+.fx-del.fxdl-run { color: transparent !important; }
+.fx-del.fxdl-run > svg:not(.fxdl-can):not(.fxdl-ring), .fx-del.fxdl-run > span:not(.fxdl) { opacity: 0; transform: scale(.5); }
+.fx-del.fxdl-open .fxdl-lid { transform: rotate(-38deg) translate(-2px, -3px); }
+.fx-del.fxdl-open .fxdl-p { animation: fxdl-burst .55s ease-out forwards; animation-delay: calc(var(--n) * 18ms); }
+@keyframes fxdl-burst { 0% { opacity: 1; transform: translate(0, 0) scale(1); } 100% { opacity: 0; transform: translate(var(--x), var(--y)) scale(.3); } }
+.fx-del.fxdl-ring-on .fxdl-ring { opacity: 1; }
+.fx-del.fxdl-ring-on .fxdl-ring circle { animation: fxdl-draw .62s cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes fxdl-draw { to { stroke-dashoffset: 0; } }
+.fx-del.fxdl-shrink { padding-inline: 0 !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  #login .lbox.fx *, #login .lbox.fx { transition: none !important; animation: none !important; }
+  .fx-up:hover > .fxu-icon { animation: none; }
+}
+@media print { .fxdock-wrap { display: none !important; } }
+
+/* الوضع الفاتح: ألوان أغمق للزر النشط والحلقة لتباين أفضل */
+:root[data-theme="light"] .fxd-it.on, :root[data-theme="light"] .fxd-it.on .fxd-lb { color: color-mix(in srgb, var(--acc) 55%, #1e293b); }
+:root[data-theme="light"] .fxd-ring { border-color: color-mix(in srgb, var(--acc) 65%, #1e293b); box-shadow: 0 0 10px color-mix(in srgb, var(--acc) 45%, transparent); }
+:root[data-theme="light"] .fxd-line { opacity: .6; }
+@media (max-width: 760px) { #login .lbox.fx .lside { display: grid; place-items: center; } }

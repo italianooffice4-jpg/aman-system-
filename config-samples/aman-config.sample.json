@@ -1,0 +1,5 @@
+{
+  "libraryDir": "",
+  "print": { "printer": "", "paper": "A4", "duplex": "auto", "color": "color", "ask": false },
+  "scan": { "deviceId": "", "deviceName": "", "dpi": 200, "color": "color" }
+}

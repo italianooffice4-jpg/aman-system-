@@ -1,0 +1,27 @@
+/* v15.6 — المرحلة 6: التقارير والطباعة */
+.rpx-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px;border-bottom:1px solid var(--bd,#ddd);padding-bottom:8px}
+.rpx-tab{border:1px solid var(--bd,#ccc);background:var(--card,#fff);color:inherit;border-radius:20px;padding:6px 16px;cursor:pointer;font:inherit}
+.rpx-tab.on{background:#714b67;color:#fff;border-color:#714b67}
+.rpx-g{display:grid;grid-template-columns:minmax(260px,1fr) minmax(320px,1.4fr);gap:14px;align-items:start}
+@media(max-width:1000px){.rpx-g{grid-template-columns:1fr}}
+.rpx-r{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.rpx .card h3{margin:0 0 8px}.rpx label{display:block;margin:10px 0 4px;font-size:12px;opacity:.85}.rpx .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.rpx-it{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--bd,#ddd)}.rpx-bt{display:flex;gap:4px;flex-wrap:wrap}
+.rpx-cols{display:flex;flex-direction:column;gap:4px;max-height:260px;overflow:auto;border:1px solid var(--bd,#ddd);border-radius:8px;padding:6px}
+.rpx-c{display:flex;justify-content:space-between;align-items:center;padding:3px 6px;border-radius:6px;background:rgba(113,75,103,.07)}
+.rpx-m{border:0;background:transparent;cursor:pointer;color:inherit;font-size:14px;padding:2px 6px;border-radius:4px}.rpx-m:hover:not(:disabled){background:rgba(113,75,103,.2)}.rpx-m:disabled{opacity:.3;cursor:default}
+.rpx-add{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12px}
+.rpx .chip{border:1px dashed #714b67;background:transparent;color:inherit;border-radius:14px;padding:2px 10px;cursor:pointer;font:inherit;font-size:12px}
+.rpx-warn{background:rgba(245,158,11,.14);border:1px solid #f59e0b;border-radius:8px;padding:8px 12px;font-size:12px;margin:6px 0 10px}
+.rpx-k{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}.rpx-k>div{flex:1;min-width:150px;border:1px solid var(--bd,#ddd);border-radius:10px;padding:10px 12px}.rpx-k b{display:block;font-size:18px;color:#714b67}.rpx-k span{font-size:12px;opacity:.8}
+.rpx-tps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:10px}
+.rpx-tp{display:flex;flex-direction:column;gap:3px;border:2px solid var(--bd,#ddd);border-radius:12px;padding:12px;cursor:pointer;margin:0!important}.rpx-tp.on{border-color:#714b67;background:rgba(113,75,103,.08)}.rpx-tp input{position:absolute;opacity:0;pointer-events:none}.rpx-tp span{font-size:12px;opacity:.8}
+.rpx-tp:focus-within{outline:2px solid #017e84}
+/* معاينة الطباعة داخل الصفحة */
+.rpv{position:fixed;inset:0;z-index:400;background:#2b2b2b;display:flex;flex-direction:column}
+.rpv-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 14px;background:var(--card,#fff);color:var(--tx,#222);border-bottom:1px solid #999}
+.rpv-t{font-size:14px}.rpv-sp{flex:1}.rpv-l{display:flex;gap:6px;align-items:center;font-size:12px;margin:0}.rpv-l select{width:auto}
+.rpv-z{display:flex;gap:6px;align-items:center}.rpv-z button{width:26px;height:26px;border-radius:6px;border:1px solid #999;background:transparent;color:inherit;cursor:pointer}
+.rpv-c{border:0;background:transparent;font-size:24px;line-height:1;cursor:pointer;color:inherit;padding:0 8px}
+#rpv-f{flex:1;border:0;width:100%;background:#6b6b6b}
+@media print{.rpv{display:none!important}}

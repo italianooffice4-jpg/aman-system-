@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.log
+# تُبنى تلقائيًا (postinstall محليًا وGitHub Actions عند النشر)
+desktop/src/ui/aman-ui.*
+desktop/src/vendor/tesseract/
+# أندرويد: يُولَّد عند البناء
+android/node_modules/
+android/www/
+android/android/
+android/src/ui/aman-ui.*
+android/src/vendor/tesseract/
