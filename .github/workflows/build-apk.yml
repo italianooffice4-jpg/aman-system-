@@ -22,9 +22,10 @@ jobs:
           distribution: temurin
           java-version: 21
 
+
       - uses: android-actions/setup-android@v4
-  with:
-    packages: platform-tools
+        with:
+          packages: platform-tools
 
       - name: Install dependencies
         working-directory: android
@@ -42,3 +43,4 @@ jobs:
         with:
           name: AmanSystem-apk
           path: android/android/app/build/outputs/apk/debug/app-debug.apk
+
