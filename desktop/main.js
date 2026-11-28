@@ -3,7 +3,7 @@ const { app, BrowserWindow, protocol, ipcMain, dialog, shell, Menu } = require('
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { execFile } = require('child_process');
+const { execFile, spawn } = require('child_process');
 const { Library } = require('./library');
 const { Updater } = require('./updater');
 const { DataStore } = require('./datastore');
@@ -189,15 +189,41 @@ const SCRIPT = () => path.join(ROOT, 'scripts', 'scan.ps1');
 let psChild = null;                       // عملية PowerShell الجارية (للإلغاء)
 const scanLog = () => path.join(app.getPath('userData'), 'scan.log');
 const logScan = (m) => { try { fs.appendFileSync(scanLog(), new Date().toISOString() + ' ' + m + '\n'); } catch (e) { /* لا شيء */ } };
-const runPS = (args, timeout) => new Promise((resolve) => {
+// <runProc>
+// تشغيل عملية خارجية بحيث يرجع الوعد دائمًا: لا ننتظر العمليات الفرعية التي ترث الأنابيب (تعريفات HP تفعل ذلك)،
+// والمهلة تقتل شجرة العملية كلها، و stdin مغلق حتى لا ينتظر PowerShell مدخلات.
+const killTree = (c) => {
+  try {
+    if (!c) return;
+    if (process.platform === 'win32' && c.pid) execFile('taskkill', ['/PID', String(c.pid), '/T', '/F'], { windowsHide: true }, () => {});
+    else c.kill();
+  } catch (e) { /* لا شيء */ }
+};
+const runProc = (bin, argv, timeout) => new Promise((resolve) => {
   const t0 = Date.now();
-  psChild = execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-STA', '-File', SCRIPT(), ...args],
-    { timeout, windowsHide: true, maxBuffer: 4 * 1024 * 1024, encoding: 'utf8' }, (err, stdout, stderr) => {
-      const timedOut = !!(err && (err.killed || err.signal) && Date.now() - t0 >= timeout - 500);
-      psChild = null;
-      resolve({ err, timedOut, ms: Date.now() - t0, out: String(stdout || '').replace(/^\uFEFF/, '').trim(), errText: String(stderr || '').replace(/^\uFEFF/, '').trim() });
-    });
+  let out = '', errText = '', done = false, timedOut = false, code = null, child = null, tm = null, grace = null;
+  const clean = (t) => String(t || '').replace(/^\uFEFF/, '').trim();
+  const finish = () => {
+    if (done) return; done = true; clearTimeout(tm); clearTimeout(grace);
+    if (psChild === child) psChild = null;
+    const err = timedOut ? new Error('timeout') : (code === 0 || code === null ? null : new Error('exit code ' + code));
+    logScan('ps exit pid=' + (child && child.pid) + ' code=' + code + ' timedOut=' + timedOut + ' ms=' + (Date.now() - t0));
+    resolve({ err, timedOut, ms: Date.now() - t0, out: clean(out), errText: clean(errText) });
+  };
+  try { child = spawn(bin, argv, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }); }
+  catch (e) { errText = String((e && e.message) || e); return finish(); }
+  psChild = child;
+  logScan('ps spawn pid=' + child.pid);
+  child.stdout.setEncoding('utf8'); child.stderr.setEncoding('utf8');
+  child.stdout.on('data', (d) => { if (out.length < 4e6) out += d; });
+  child.stderr.on('data', (d) => { if (errText.length < 1e6) errText += d; });
+  child.on('error', (e) => { errText += String((e && e.message) || e); finish(); });
+  child.on('exit', (c) => { code = c; grace = setTimeout(finish, 800); if (grace.unref) grace.unref(); });   // نمهل الأنابيب 0.8 ثانية لتفرغ ثم نكمل
+  child.on('close', finish);
+  tm = setTimeout(() => { timedOut = true; killTree(child); const g = setTimeout(finish, 1500); if (g.unref) g.unref(); }, timeout);
 });
+// </runProc>
+const runPS = (args, timeout) => runProc('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-STA', '-File', SCRIPT(), ...args], timeout);
 async function listScanners() {
   if (process.platform !== 'win32') return [];
   const r = await runPS(['-Mode', 'list'], 20000);
@@ -209,20 +235,24 @@ ipcMain.handle('desk:scanners', () => listScanners());
 let scanning = 0, scanCancelled = false;
 ipcMain.handle('desk:scanCancel', () => {
   scanCancelled = true;
-  try { if (psChild) psChild.kill(); } catch (e) { /* لا شيء */ }
+  killTree(psChild);
   logScan('cancel requested by user');
   return { ok: true, wasBusy: !!scanning };
 });
 ipcMain.handle('desk:scan', async (_e, opts = {}) => {
   if (process.platform !== 'win32') return { err: 'المسح الضوئي المباشر يعمل على Windows فقط' };
-  if (scanning && Date.now() - scanning < 6 * 60 * 1000) return { err: 'يوجد مسح جارٍ الآن. انتظر انتهاءه أو اضغط «إلغاء المسح السابق».', busy: true };
-  scanning = Date.now(); scanCancelled = false;
+  logScan('scan request adf=' + !!opts.adf + ' legacy=' + !!opts.legacy + ' lockAge=' + (scanning ? Date.now() - scanning : 0) + ' child=' + !!psChild);
+  if (scanning && psChild && Date.now() - scanning < 6 * 60 * 1000) return { err: 'يوجد مسح جارٍ الآن. انتظر انتهاءه أو اضغط «إلغاء المسح السابق».', busy: true };
+  if (scanning) { logScan('stale scan lock released'); killTree(psChild); psChild = null; }   // قفل قديم بلا عملية شغالة: نتجاوزه بدل أن يعلق المسح للأبد
+  const myLock = scanning = Date.now(); scanCancelled = false;
   let out = '';
   try {
     let cfg = readCfg(), sc = cfg.scan || {};
-    const list = await listScanners();
-    if (!list.length) return { err: 'لم يتم العثور على ماسح ضوئي متصل. تأكد من تشغيله وتعريفه.' };
-    let dev = list.find(s => s.id === sc.deviceId);
+    let list = [], dev = sc.deviceId ? { id: sc.deviceId, name: sc.deviceName || '' } : null;   // جهاز محفوظ: لا حاجة لعملية PowerShell إضافية للسرد
+    if (!dev) {
+      list = await listScanners();
+      if (!list.length) return { err: 'لم يتم العثور على ماسح ضوئي متصل. تأكد من تشغيله وتعريفه.' };
+    }
     if (!dev) {
       if (list.length === 1) dev = list[0];
       else {
@@ -258,7 +288,8 @@ ipcMain.handle('desk:scan', async (_e, opts = {}) => {
     logScan('exception ' + (e && e.message));
     return { err: 'تعذر المسح: ' + String((e && e.message) || e).slice(0, 200) };
   } finally {
-    scanning = 0; psChild = null;
+    if (scanning === myLock) scanning = 0;
+    logScan('scan finished');
     if (out) { try { fs.rmSync(out, { recursive: true, force: true }); } catch (e) { /* لا شيء */ } }
   }
 });
@@ -285,7 +316,7 @@ ipcMain.handle('desk:scanWatchChoose', async () => {
 });
 ipcMain.handle('desk:scanWatchStop', () => { stopScanWatch(); const c = readCfg(); writeCfg({ ...c, scan: { ...(c.scan || {}), watchDir: '' } }); return { ok: true }; });
 ipcMain.handle('desk:scanWatchRead', (_e, name) => SW.readIncoming(scanWatchDir, name));
-app.on('will-quit', () => { stopScanWatch(); try { if (DS) { DS.flush(); DS.close(); } } catch (e) { /* لا شيء */ } });
+app.on('will-quit', () => { killTree(psChild); stopScanWatch(); try { if (DS) { DS.flush(); DS.close(); } } catch (e) { /* لا شيء */ } });
 
 // ---------- الذكاء الاصطناعي (OpenAI / Claude / Ollama) ----------
 ipcMain.handle('desk:ai', async (_e, o = {}) => {
